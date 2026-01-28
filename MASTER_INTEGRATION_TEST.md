@@ -44,7 +44,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 14. **Fault Tolerance**
     - Simulate failures and ensure graceful degradation.
 15. **Home Page Experience**
-    - Validate hero section, highlights, and call-to-action components render correctly.
+    - Validate hero banner, login/register actions, highlights, and call-to-action components render correctly.
 
 ## Coverage Requirements
 - **>=95% branch coverage** across codebase.

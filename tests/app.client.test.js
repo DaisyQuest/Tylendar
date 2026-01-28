@@ -60,14 +60,14 @@ describe("client rendering", () => {
       departments: ["Ops", "People"]
     });
 
-    expect(html).toContain("Organization pulse");
+    expect(html).toContain("Community pulse");
     expect(html).toContain("People");
   });
 
   test("renderDashboard handles missing highlights and departments", () => {
     const html = renderDashboard("Org", {});
 
-    expect(html).toContain("Organization pulse");
+    expect(html).toContain("Community pulse");
   });
 
   test("renderOrganizationStats includes departments", () => {

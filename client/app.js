@@ -44,7 +44,7 @@ function renderHighlights(highlights) {
 function renderDashboard(title, summary) {
   return `
     <h3>${title}</h3>
-    <p class="muted">${summary.focusLabel || "Organization pulse"}</p>
+    <p class="muted">${summary.focusLabel || "Community pulse"}</p>
     <ul class="list">
       ${(summary.highlights || summary.departments || []).map((item) => `<li>${item}</li>`).join("")}
     </ul>

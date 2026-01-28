@@ -2,15 +2,15 @@ const baseUsers = [
   {
     id: "user-1",
     name: "Avery Chen",
-    role: "Calendar Admin",
-    title: "Director of Operations",
+    role: "Community Host",
+    title: "Events & Friends",
     location: "Seattle, WA"
   },
   {
     id: "user-2",
     name: "Riley Patel",
     role: "Event Coordinator",
-    title: "Community Programs",
+    title: "Community Moments",
     location: "Austin, TX"
   }
 ];
@@ -18,8 +18,8 @@ const baseUsers = [
 const eventCatalog = [
   {
     id: "evt-100",
-    title: "Q2 Roadmap Sync",
-    calendar: "Product",
+    title: "Brunch Planning",
+    calendar: "Friends",
     day: "Tue",
     time: "10:00 AM",
     range: "week",
@@ -27,8 +27,8 @@ const eventCatalog = [
   },
   {
     id: "evt-200",
-    title: "Partner Summit",
-    calendar: "All Hands",
+    title: "Game Night",
+    calendar: "Hangouts",
     day: "Thu",
     time: "3:00 PM",
     range: "month",
@@ -36,8 +36,8 @@ const eventCatalog = [
   },
   {
     id: "evt-300",
-    title: "Executive Review",
-    calendar: "Leadership",
+    title: "Weekend Hike",
+    calendar: "Outdoors",
     day: "Fri",
     time: "1:00 PM",
     range: "year",
@@ -49,19 +49,19 @@ const accessMatrix = [
   {
     id: "perm-1",
     user: "Avery Chen",
-    calendar: "Executive",
+    calendar: "Friends",
     permissions: ["View Calendar", "Add to Calendar", "Manage Calendar"]
   },
   {
     id: "perm-2",
     user: "Riley Patel",
-    calendar: "Community",
+    calendar: "Hangouts",
     permissions: ["View Calendar - Times Only", "Comment on Calendar"]
   },
   {
     id: "perm-3",
     user: "Jordan Lee",
-    calendar: "Marketing",
+    calendar: "Outdoors",
     permissions: ["View Calendar", "Add to Calendar"]
   }
 ];
@@ -71,13 +71,13 @@ const messageBoard = {
     {
       id: "c-1",
       author: "Avery Chen",
-      message: "Please add agenda items by Monday.",
+      message: "Bring your favorite snacks!",
       time: "2 hours ago"
     },
     {
       id: "c-2",
       author: "Riley Patel",
-      message: "Adding customer feedback segment.",
+      message: "I'll bring playlists for the vibe.",
       time: "30 minutes ago"
     }
   ],
@@ -85,7 +85,7 @@ const messageBoard = {
     {
       id: "c-3",
       author: "Jordan Lee",
-      message: "Confirming keynote logistics.",
+      message: "Route looks great — can't wait!",
       time: "1 day ago"
     }
   ]
@@ -119,16 +119,16 @@ function getFeatureFlags(overrides = {}) {
 function getHomeHighlights() {
   return [
     {
-      title: "Unified calendar intelligence",
-      description: "Blend personal, team, and org calendars with clear permission controls."
+      title: "Your social calendar, together",
+      description: "Blend friend groups, clubs, and communities with gentle access controls."
     },
     {
-      title: "Access you can trust",
-      description: "Granular permissions and audit-ready change history keep teams aligned."
+      title: "Kind boundaries",
+      description: "Granular permissions keep everyone comfortable and in the loop."
     },
     {
-      title: "Experience-forward design",
-      description: "Beautiful layouts across dashboards, views, and collaboration surfaces."
+      title: "Soft, welcoming design",
+      description: "Pastel visuals and cozy spaces for planning together."
     }
   ];
 }
@@ -140,36 +140,36 @@ function getUserProfile(userId) {
     ...user,
     lastActive: "Today, 9:45 AM",
     notifications: [
-      "3 events awaiting response",
+      "3 invites waiting for your RSVP",
       "2 permission updates",
-      "New message on Partner Summit"
+      "New message on Game Night"
     ]
   };
 }
 
 function getUserDashboard() {
   return {
-    focusLabel: "Today at a glance",
+    focusLabel: "Today with friends",
     highlights: [
-      "2 upcoming approvals",
-      "4 events with pending comments",
-      "8 team members online"
+      "2 upcoming invites",
+      "4 events with new comments",
+      "8 friends online"
     ],
     milestones: [
-      "Finalize Q2 planning",
-      "Prep executive sync",
-      "Review staffing calendar"
+      "Finalize weekend plans",
+      "Prep game night",
+      "Review group availability"
     ]
   };
 }
 
 function getOrganizationDashboard() {
   return {
-    name: "Tylendar Labs",
+    name: "Tylendar Community",
     activeCalendars: 12,
     upcomingEvents: 48,
     complianceScore: "98%",
-    departments: ["Operations", "Product", "People", "Marketing"]
+    departments: ["Friends", "Clubs", "Neighborhood", "Wellness"]
   };
 }
 

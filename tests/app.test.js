@@ -34,7 +34,7 @@ describe("server app", () => {
 
     expect(profile.body.name).toBe("Avery Chen");
     expect(userDash.body.highlights).toHaveLength(3);
-    expect(orgDash.body.departments).toContain("People");
+    expect(orgDash.body.departments).toContain("Friends");
   });
 
   test("serves calendar and event list views", async () => {

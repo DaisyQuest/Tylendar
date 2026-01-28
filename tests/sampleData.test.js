@@ -42,8 +42,8 @@ describe("sample data providers", () => {
     const user = getUserDashboard();
     const org = getOrganizationDashboard();
 
-    expect(user.highlights).toContain("2 upcoming approvals");
-    expect(org.departments).toContain("Product");
+    expect(user.highlights).toContain("2 upcoming invites");
+    expect(org.departments).toContain("Friends");
   });
 
   test("getCalendarView handles day view and fallback view", () => {
