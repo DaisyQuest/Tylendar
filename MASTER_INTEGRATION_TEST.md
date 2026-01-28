@@ -42,6 +42,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 7. **Calendar Views**
    - Month/2-week/week/day rendering with event correctness.
    - Verify navigation between views preserves selected date and filters.
+   - Confirm the calendar grid renders time slots, all-day row, and focus-day counts with an agenda sidebar.
 8. **Event List Views**
    - Year/n-month/month/week/day filtering.
    - Confirm list view filtering respects calendar permissions.
