@@ -1,7 +1,7 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase } = require("../server/migrations/seed");
+const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
 
 describe("permission enforcement", () => {
   test("denies and allows based on calendar permissions", async () => {
@@ -9,8 +9,14 @@ describe("permission enforcement", () => {
     const seed = await seedDatabase(repositories);
     const app = createApp({ repositories });
 
-    const loginAdmin = await request(app).post("/api/auth/login").send({ userId: "user-1" });
-    const loginMember = await request(app).post("/api/auth/login").send({ userId: "user-2" });
+    const loginAdmin = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
+    const loginMember = await request(app).post("/api/auth/login").send({
+      email: "riley@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
 
     const denied = await request(app)
       .post("/api/events")
@@ -48,7 +54,10 @@ describe("permission enforcement", () => {
     await seedDatabase(repositories);
     const app = createApp({ repositories });
 
-    const login = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
     const denied = await request(app)
       .post("/api/events")
       .set("Authorization", `Bearer ${login.body.token}`)

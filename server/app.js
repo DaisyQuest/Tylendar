@@ -122,6 +122,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     flags,
     sessionStore: sessions,
     userRepository: repos.users,
+    organizationsRepository: repos.organizations,
     auditService: audit
   }));
   app.use("/api/org", requireFeature("org", flags), createOrgRouter({

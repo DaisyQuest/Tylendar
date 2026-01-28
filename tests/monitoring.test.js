@@ -1,7 +1,7 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase } = require("../server/migrations/seed");
+const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
 
 describe("monitoring endpoints", () => {
   test("health and metrics endpoints", async () => {
@@ -59,7 +59,10 @@ describe("monitoring endpoints", () => {
     const unauthorized = await request(app).get("/api/monitoring/admin/dashboard");
     expect(unauthorized.status).toBe(401);
 
-    const login = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
     const dashboard = await request(app)
       .get("/api/monitoring/admin/dashboard")
       .set("Authorization", `Bearer ${login.body.token}`);

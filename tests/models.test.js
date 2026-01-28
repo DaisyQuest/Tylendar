@@ -25,7 +25,8 @@ describe("domain models", () => {
       name: "Bad Role",
       email: "bad@example.com",
       organizationId: "org-1",
-      role: 42
+      role: 42,
+      passwordHash: 42
     });
     expect(invalidRole.valid).toBe(false);
 
@@ -35,6 +36,7 @@ describe("domain models", () => {
       email: "admin@example.com",
       organizationId: "org-1",
       role: "admin",
+      passwordHash: "salt:hash",
       createdAt: "2024-01-01T00:00:00.000Z"
     });
     expect(userWithRole.role).toBe("admin");

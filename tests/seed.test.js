@@ -1,4 +1,5 @@
-const { buildSeedData, seedDatabase } = require("../server/migrations/seed");
+const { buildSeedData, seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
+const { verifyPassword } = require("../server/auth/passwords");
 const { createRepositories } = require("../server/repositories");
 
 describe("seed utilities", () => {
@@ -6,6 +7,8 @@ describe("seed utilities", () => {
     const seed = buildSeedData();
     expect(seed.organization.id).toBe("org-1");
     expect(seed.users).toHaveLength(2);
+    expect(seed.defaultPassword).toBe(DEFAULT_USER_PASSWORD);
+    expect(verifyPassword(seed.defaultPassword, seed.users[0].passwordHash)).toBe(true);
     expect(seed.events).toHaveLength(1);
     expect(seed.roles).toHaveLength(2);
   });
