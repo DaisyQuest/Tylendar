@@ -27,6 +27,8 @@ const REQUIRED_DETAILS = [
   "embed",
   "operational metrics",
   "fault tolerance",
+  "developer portal",
+  "observability",
   "responsive layout",
 ];
 

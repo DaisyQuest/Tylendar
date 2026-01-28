@@ -6,7 +6,15 @@ const defaultSelectors = {
   calendarView: "calendar-view",
   eventList: "event-list",
   accessMatrix: "access-matrix",
-  messageBoard: "message-board"
+  messageBoard: "message-board",
+  embedWidget: "embed-widget",
+  sharingOptions: "sharing-options",
+  auditHistory: "audit-history",
+  roleManagement: "role-management",
+  faultTolerance: "fault-tolerance",
+  developerPortal: "developer-portal",
+  observability: "observability",
+  operationalAlerts: "operational-alerts"
 };
 
 function renderProfile(profile) {
@@ -153,6 +161,168 @@ function renderMessageBoard(board) {
   `;
 }
 
+function renderEmbedWidget(widget) {
+  return `
+    <h3>Embed Widget</h3>
+    <p class="muted">${widget.title} · ${widget.theme}</p>
+    <div class="badges">
+      <span class="badge">Visibility: ${widget.visibility}</span>
+      <span class="badge">API: ${widget.endpoint}</span>
+    </div>
+    <div class="code-block">${widget.sampleSnippet}</div>
+  `;
+}
+
+function renderSharingOptions(payload) {
+  const items = payload.options
+    .map((option) => {
+      const extras = option.formats ? `Formats: ${option.formats.join(", ")}` : option.link;
+      return `
+        <li>
+          <strong>${option.channel}</strong>
+          <p>${option.description}</p>
+          <span class="muted">${extras}</span>
+        </li>
+      `;
+    })
+    .join("");
+
+  return `
+    <h3>Social Sharing & Export</h3>
+    <ul class="list">${items}</ul>
+  `;
+}
+
+function renderAuditHistory(payload) {
+  const entries = payload.entries
+    .map(
+      (entry) => `
+      <div class="audit-entry">
+        <strong>${entry.action}</strong>
+        <p>${entry.summary}</p>
+        <span>${entry.actor} · ${entry.status} · ${entry.occurredAt}</span>
+      </div>
+    `
+    )
+    .join("");
+
+  return `
+    <h3>Audit History</h3>
+    ${entries}
+  `;
+}
+
+function renderRoleManagement(payload) {
+  const roles = payload.roles
+    .map(
+      (role) => `
+        <li>
+          <strong>${role.name}</strong>
+          <p>${role.summary}</p>
+          <span class="muted">${role.permissions.join(", ")}</span>
+        </li>
+      `
+    )
+    .join("");
+
+  const assignments = payload.assignments
+    .map(
+      (assignment) => `
+        <li>
+          ${assignment.user} · ${assignment.roleId} · ${assignment.assignedBy}
+          <span class="muted">${assignment.assignedAt}</span>
+        </li>
+      `
+    )
+    .join("");
+
+  return `
+    <h3>Role Management</h3>
+    <div class="grid two">
+      <div>
+        <h4>Roles</h4>
+        <ul class="list">${roles}</ul>
+      </div>
+      <div>
+        <h4>Assignments</h4>
+        <ul class="list">${assignments}</ul>
+      </div>
+    </div>
+  `;
+}
+
+function renderFaultTolerance(snapshot) {
+  const items = snapshot.snapshots
+    .map(
+      (entry) => `
+        <li>
+          <strong>${entry.pattern}</strong>
+          <p>${entry.detail}</p>
+          <span class="muted">${entry.status}</span>
+        </li>
+      `
+    )
+    .join("");
+
+  return `
+    <h3>Fault Tolerance</h3>
+    <ul class="list">${items}</ul>
+  `;
+}
+
+function renderDeveloperPortal(portal) {
+  const resources = portal.resources
+    .map(
+      (resource) => `
+        <li>
+          <strong>${resource.title}</strong>
+          <p>${resource.detail}</p>
+        </li>
+      `
+    )
+    .join("");
+
+  return `
+    <h3>${portal.headline}</h3>
+    <p class="muted">${portal.description}</p>
+    <ul class="list">${resources}</ul>
+    <p class="muted">${portal.status}</p>
+  `;
+}
+
+function renderObservability(overview) {
+  return `
+    <h3>Observability Dashboard</h3>
+    <ul class="list">
+      <li>Uptime: ${overview.uptime}</li>
+      <li>P95 Latency: ${overview.latencyP95}</li>
+      <li>Error Rate: ${overview.errorRate}</li>
+    </ul>
+    <div class="badges">
+      ${overview.highlights.map((item) => `<span class="badge">${item}</span>`).join("")}
+    </div>
+  `;
+}
+
+function renderOperationalAlerts(payload) {
+  const alerts = payload.alerts
+    .map(
+      (alert) => `
+        <li>
+          <strong>${alert.severity.toUpperCase()}</strong>
+          <p>${alert.message}</p>
+          <span class="muted">${alert.status}</span>
+        </li>
+      `
+    )
+    .join("");
+
+  return `
+    <h3>Operational Alerts</h3>
+    <ul class="list">${alerts}</ul>
+  `;
+}
+
 async function fetchJson(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -164,7 +334,24 @@ async function fetchJson(url) {
 async function init(selectorOverrides = {}) {
   const selectors = { ...defaultSelectors, ...selectorOverrides };
 
-  const [profile, home, userDash, orgDash, calendar, events, access, message] =
+  const [
+    profile,
+    home,
+    userDash,
+    orgDash,
+    calendar,
+    events,
+    access,
+    message,
+    embed,
+    sharing,
+    audit,
+    roles,
+    faultTolerance,
+    developer,
+    observability,
+    alerts
+  ] =
     await Promise.all([
       fetchJson("/api/profile/user-1"),
       fetchJson("/api/home"),
@@ -173,7 +360,15 @@ async function init(selectorOverrides = {}) {
       fetchJson("/api/calendar/view?view=month"),
       fetchJson("/api/events/list?range=month"),
       fetchJson("/api/access"),
-      fetchJson("/api/events/evt-100/comments")
+      fetchJson("/api/events/evt-100/comments"),
+      fetchJson("/api/embed/widget?calendarId=cal-1"),
+      fetchJson("/api/sharing/preview?calendarId=cal-1"),
+      fetchJson("/api/audit/history-snapshot"),
+      fetchJson("/api/roles/summary?orgId=org-1"),
+      fetchJson("/api/fault-tolerance/snapshot"),
+      fetchJson("/api/developer/portal"),
+      fetchJson("/api/monitoring/observability"),
+      fetchJson("/api/monitoring/alerts")
     ]);
 
   document.getElementById(selectors.profileCard).innerHTML = renderProfile(profile);
@@ -187,6 +382,14 @@ async function init(selectorOverrides = {}) {
   document.getElementById(selectors.eventList).innerHTML = renderEventList(events);
   document.getElementById(selectors.accessMatrix).innerHTML = renderAccessMatrix(access.entries);
   document.getElementById(selectors.messageBoard).innerHTML = renderMessageBoard(message);
+  document.getElementById(selectors.embedWidget).innerHTML = renderEmbedWidget(embed);
+  document.getElementById(selectors.sharingOptions).innerHTML = renderSharingOptions(sharing);
+  document.getElementById(selectors.auditHistory).innerHTML = renderAuditHistory(audit);
+  document.getElementById(selectors.roleManagement).innerHTML = renderRoleManagement(roles);
+  document.getElementById(selectors.faultTolerance).innerHTML = renderFaultTolerance(faultTolerance);
+  document.getElementById(selectors.developerPortal).innerHTML = renderDeveloperPortal(developer);
+  document.getElementById(selectors.observability).innerHTML = renderObservability(observability);
+  document.getElementById(selectors.operationalAlerts).innerHTML = renderOperationalAlerts(alerts);
 }
 
 if (typeof window !== "undefined") {
@@ -207,6 +410,14 @@ if (typeof module !== "undefined") {
     renderEventList,
     renderHighlights,
     renderMessageBoard,
+    renderEmbedWidget,
+    renderSharingOptions,
+    renderAuditHistory,
+    renderRoleManagement,
+    renderFaultTolerance,
+    renderDeveloperPortal,
+    renderObservability,
+    renderOperationalAlerts,
     renderOrganizationStats,
     renderProfile
   };

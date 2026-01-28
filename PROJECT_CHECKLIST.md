@@ -37,15 +37,15 @@
 - [x] **T-0406**: Event List View (year/n-month/month/week/day).
 - [x] **T-0407**: Manage Access View (granular permission assignments).
 - [x] **T-0408**: MessageBoard Feature on Events (comments).
-- [ ] **T-0409**: Calendar Embed Widget (calls main API).
-- [ ] **T-0410**: Social Media Sharing / Export Features.
-- [ ] **T-0411**: Beautiful Audit History UI.
+- [x] **T-0409**: Calendar Embed Widget (calls main API).
+- [x] **T-0410**: Social Media Sharing / Export Features.
+- [x] **T-0411**: Beautiful Audit History UI.
 
 ## Robustness & Enterprise Concerns
-- [ ] **T-0501**: Fault-tolerance patterns (retries, circuit breakers, graceful errors).
-- [ ] **T-0502**: Role & permission management UX and APIs.
-- [ ] **T-0503**: API documentation and developer portal.
-- [ ] **T-0504**: Observability dashboards and operational alerts.
+- [x] **T-0501**: Fault-tolerance patterns (retries, circuit breakers, graceful errors).
+- [x] **T-0502**: Role & permission management UX and APIs.
+- [x] **T-0503**: API documentation and developer portal.
+- [x] **T-0504**: Observability dashboards and operational alerts.
 
 ## Testing & Quality
 - [x] **T-0601**: Unit tests for all domain models (95%+ branch coverage).

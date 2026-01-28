@@ -99,8 +99,168 @@ const featureFlags = {
   calendarViews: true,
   eventListViews: true,
   manageAccess: true,
-  messageBoard: true
+  messageBoard: true,
+  embedWidget: true,
+  socialSharing: true,
+  auditHistory: true,
+  faultTolerance: true,
+  roleManagement: true,
+  developerPortal: true,
+  observability: true
 };
+
+const auditHistory = [
+  {
+    id: "audit-100",
+    action: "calendar_embed_loaded",
+    actor: "Guest Viewer",
+    status: "success",
+    summary: "Public embed widget loaded",
+    occurredAt: "Today, 8:15 AM"
+  },
+  {
+    id: "audit-200",
+    action: "role_assignment",
+    actor: "Avery Chen",
+    status: "success",
+    summary: "Assigned Event Coordinator role to Riley Patel",
+    occurredAt: "Today, 7:05 AM"
+  },
+  {
+    id: "audit-300",
+    action: "share_export",
+    actor: "Riley Patel",
+    status: "warning",
+    summary: "Exported calendar with 2 redacted events",
+    occurredAt: "Yesterday, 4:20 PM"
+  }
+];
+
+const embedWidgets = [
+  {
+    id: "embed-1",
+    calendarId: "cal-1",
+    title: "Community Events Embed",
+    theme: "Lavender Glow",
+    visibility: "Public",
+    endpoint: "/api/calendars/cal-1/embed",
+    sampleSnippet: "<iframe src=\"https://tylendar.app/embed/cal-1\" />"
+  }
+];
+
+const sharingOptions = [
+  {
+    id: "share-1",
+    calendarId: "cal-1",
+    channel: "Social Link",
+    description: "Shareable preview with RSVP buttons",
+    link: "https://tylendar.app/share/cal-1"
+  },
+  {
+    id: "share-2",
+    calendarId: "cal-1",
+    channel: "Export",
+    description: "ICS, CSV, and PDF exports with time zones",
+    formats: ["ICS", "CSV", "PDF"]
+  }
+];
+
+const roleDefinitions = [
+  {
+    id: "role-1",
+    orgId: "org-1",
+    name: "Event Coordinator",
+    permissions: ["Create Events", "Comment on Calendar", "View Calendar"],
+    summary: "Plans and moderates community gatherings"
+  },
+  {
+    id: "role-2",
+    orgId: "org-1",
+    name: "Calendar Steward",
+    permissions: ["Manage Calendar", "Add to Calendar", "View Calendar"],
+    summary: "Owns calendar quality and access reviews"
+  }
+];
+
+const roleAssignments = [
+  {
+    id: "assign-1",
+    roleId: "role-1",
+    user: "Riley Patel",
+    assignedBy: "Avery Chen",
+    assignedAt: "Today, 7:00 AM"
+  },
+  {
+    id: "assign-2",
+    roleId: "role-2",
+    user: "Jordan Lee",
+    assignedBy: "Avery Chen",
+    assignedAt: "Yesterday, 2:30 PM"
+  }
+];
+
+const faultToleranceSnapshots = [
+  {
+    id: "resilience-1",
+    pattern: "Retries",
+    status: "Healthy",
+    detail: "Median retry count under 1.2 attempts"
+  },
+  {
+    id: "resilience-2",
+    pattern: "Circuit Breakers",
+    status: "Monitoring",
+    detail: "1 circuit opened and recovered in last 24h"
+  },
+  {
+    id: "resilience-3",
+    pattern: "Graceful Degradation",
+    status: "Active",
+    detail: "Fallback content served for 3 degraded requests"
+  }
+];
+
+const developerPortal = {
+  headline: "Developer Hub",
+  description: "API references, SDK guides, and webhooks for Tylendar integrators.",
+  resources: [
+    {
+      title: "API Reference",
+      detail: "REST endpoints with request/response samples"
+    },
+    {
+      title: "Webhook Guides",
+      detail: "Subscribe to calendar changes and audit events"
+    },
+    {
+      title: "Embed Toolkit",
+      detail: "Drop-in widgets with theming guidance"
+    }
+  ],
+  status: "Updated 2 days ago"
+};
+
+const observabilityOverview = {
+  uptime: "99.98%",
+  latencyP95: "210ms",
+  errorRate: "0.3%",
+  highlights: ["Embed traffic +18%", "Event exports stable", "Alert noise reduced"]
+};
+
+const operationalAlerts = [
+  {
+    id: "alert-1",
+    severity: "info",
+    message: "Share link delivery latency returned to baseline.",
+    status: "resolved"
+  },
+  {
+    id: "alert-2",
+    severity: "warning",
+    message: "Calendar sync retries spiked for EU region.",
+    status: "monitoring"
+  }
+];
 
 const viewLabels = {
   month: "Month",
@@ -225,14 +385,63 @@ function getMessageBoard(eventId = "evt-100") {
   };
 }
 
+function getAuditHistory() {
+  return auditHistory;
+}
+
+function getEmbedWidget(calendarId = "cal-1") {
+  const widget = embedWidgets.find((entry) => entry.calendarId === calendarId) || embedWidgets[0];
+  return {
+    ...widget,
+    calendarId: widget.calendarId,
+    shareLink: `https://tylendar.app/embed/${widget.calendarId}`
+  };
+}
+
+function getSharingOptions(calendarId = "cal-1") {
+  return sharingOptions.filter((option) => option.calendarId === calendarId);
+}
+
+function getRoleManagement(orgId = "org-1") {
+  return {
+    orgId,
+    roles: roleDefinitions.filter((role) => role.orgId === orgId),
+    assignments: roleAssignments
+  };
+}
+
+function getFaultToleranceSnapshots() {
+  return faultToleranceSnapshots;
+}
+
+function getDeveloperPortal() {
+  return developerPortal;
+}
+
+function getObservabilityOverview() {
+  return observabilityOverview;
+}
+
+function getOperationalAlerts() {
+  return operationalAlerts;
+}
+
 module.exports = {
   getAccessMatrix,
+  getAuditHistory,
   getCalendarView,
+  getDeveloperPortal,
+  getEmbedWidget,
   getEventListView,
   getFeatureFlags,
+  getFaultToleranceSnapshots,
   getHomeHighlights,
+  getObservabilityOverview,
+  getOperationalAlerts,
   getMessageBoard,
   getOrganizationDashboard,
+  getRoleManagement,
+  getSharingOptions,
   getUserDashboard,
   getUserProfile
 };

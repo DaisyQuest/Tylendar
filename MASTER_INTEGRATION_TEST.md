@@ -18,6 +18,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Verify profile edits persist across session refresh and re-login.
 2. **Organization Lifecycle**
    - Create organization, assign roles, configure permissions.
+   - Validate Role & Permission Management UI for role definitions and assignments.
    - Confirm Organization Dashboard shows compliance score, calendar count, and department tags.
    - Validate organization switching updates all scoped data in the UI and API.
    - Ensure role assignment changes take effect immediately for active sessions.
@@ -51,6 +52,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 10. **Audit History**
     - Ensure audit logs surface readable history.
     - Confirm audit entries map to user actions in multiple modules (calendar, permissions, auth).
+    - Validate audit history UI highlights embed, sharing, and role changes.
 11. **Embed Widget**
     - Load embedded calendar and validate API access.
     - Confirm embed respects calendar visibility and permission boundaries.
@@ -58,14 +60,17 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 12. **Social Sharing & Export**
     - Validate exports and shareable links.
     - Confirm export formats include correct time zones and event metadata.
+    - Ensure developer portal documents sharing and export endpoints.
 13. **Monitoring & Admin Dashboards**
     - Validate service health, metrics, and operational views.
     - Verify operational metrics align with Embed Widget usage and availability.
     - Confirm admin dashboards show counts for users, organizations, calendars, and events.
     - Confirm alerts trigger on simulated error rates and recover after resolution.
+    - Validate observability dashboards and operational alert feeds render updated data.
 14. **Fault Tolerance**
     - Simulate failures and ensure graceful degradation.
     - Validate retries and fallback messaging across API and UI flows.
+    - Confirm circuit breaker states reset after cooldown windows.
 15. **Home Page Experience**
     - Validate the simplified hero banner and login/register actions on the home page.
     - Confirm the Home Details page renders highlights, dashboards, calendar previews, access, and MessageBoard sections.

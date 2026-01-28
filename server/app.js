@@ -5,9 +5,12 @@ const { createAuthRouter } = require("./api/auth");
 const { createAuditRouter } = require("./api/audit");
 const { createCalendarRouter } = require("./api/calendar");
 const { createEventRouter } = require("./api/event");
+const { createDeveloperRouter } = require("./api/developer");
 const { createMonitoringRouter } = require("./api/monitoring");
 const { createOrgRouter } = require("./api/org");
 const { createPermissionsRouter } = require("./api/permissions");
+const { createRolesRouter } = require("./api/roles");
+const { createSharingRouter } = require("./api/sharing");
 const { getFeatureFlags } = require("./config/featureFlags");
 const { getEnv } = require("./config/env");
 const { createSessionStore } = require("./auth/sessionStore");
@@ -16,13 +19,20 @@ const { requireFeature } = require("./middleware/featureFlags");
 const { createPermissionGuard } = require("./middleware/permissions");
 const { createRepositories } = require("./repositories");
 const { createAuditService } = require("./services/auditService");
+const { createObservabilityService } = require("./services/observabilityService");
 const {
   getAccessMatrix,
+  getAuditHistory,
   getCalendarView,
+  getDeveloperPortal,
+  getEmbedWidget,
   getEventListView,
   getHomeHighlights,
+  getFaultToleranceSnapshots,
   getMessageBoard,
   getOrganizationDashboard,
+  getRoleManagement,
+  getSharingOptions,
   getUserDashboard,
   getUserProfile
 } = require("./data/sampleData");
@@ -33,6 +43,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   const flags = getFeatureFlags({ overrides: featureOverrides, envFlags: env.featureFlags });
   const repos = repositories || createRepositories({ envOverrides });
   const audit = auditService || createAuditService({ auditRepository: repos.audit });
+  const observability = createObservabilityService();
   const sessions = sessionStore || createSessionStore();
   const permissionGuard = createPermissionGuard({
     calendarPermissionsRepository: repos.calendarPermissions,
@@ -91,6 +102,22 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     res.json(getMessageBoard(req.params.eventId));
   });
 
+  app.get("/api/audit/history-snapshot", requireFeature("auditHistory", flags), (req, res) => {
+    res.json({ entries: getAuditHistory() });
+  });
+
+  app.get("/api/embed/widget", requireFeature("embedWidget", flags), (req, res) => {
+    res.json(getEmbedWidget(req.query.calendarId));
+  });
+
+  app.get("/api/roles/summary", requireFeature("roleManagement", flags), (req, res) => {
+    res.json(getRoleManagement(req.query.orgId));
+  });
+
+  app.get("/api/fault-tolerance/snapshot", requireFeature("faultTolerance", flags), (req, res) => {
+    res.json({ snapshots: getFaultToleranceSnapshots() });
+  });
+
   app.use("/api/auth", requireFeature("auth", flags), createAuthRouter({
     flags,
     sessionStore: sessions,
@@ -103,6 +130,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   }));
   app.use("/api/calendars", requireFeature("calendar", flags), createCalendarRouter({
     calendarsRepository: repos.calendars,
+    eventsRepository: repos.events,
     permissionGuard,
     auditService: audit
   }));
@@ -118,8 +146,21 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   app.use("/api/audit", requireFeature("audit", flags), createAuditRouter({
     auditService: audit
   }));
+  app.use("/api/sharing", requireFeature("socialSharing", flags), createSharingRouter({
+    sharingProvider: { getSharingOptions },
+    auditService: audit
+  }));
+  app.use("/api/roles", requireFeature("roleManagement", flags), createRolesRouter({
+    rolesRepository: repos.roles,
+    roleAssignmentsRepository: repos.roleAssignments,
+    auditService: audit
+  }));
+  app.use("/api/developer", requireFeature("developerPortal", flags), createDeveloperRouter({
+    developerProvider: { getDeveloperPortal }
+  }));
   app.use("/api/monitoring", requireFeature("monitoring", flags), createMonitoringRouter({
-    repositories: repos
+    repositories: repos,
+    observabilityService: observability
   }));
 
   app.use((err, req, res, next) => {

@@ -3,6 +3,8 @@ const { createCalendar } = require("../models/calendar");
 const { createCalendarPermissions } = require("../models/calendarPermissions");
 const { createEvent } = require("../models/event");
 const { createOrganization } = require("../models/organization");
+const { createRole } = require("../models/role");
+const { createRoleAssignment } = require("../models/roleAssignment");
 const { createUser } = require("../models/user");
 const { getEnv } = require("../config/env");
 const { createMemoryRepository } = require("./memoryRepository");
@@ -16,6 +18,8 @@ function createInMemoryRepositories() {
     calendarPermissions: createMemoryRepository({ createModel: createCalendarPermissions }),
     events: createMemoryRepository({ createModel: createEvent }),
     organizations: createMemoryRepository({ createModel: createOrganization }),
+    roleAssignments: createMemoryRepository({ createModel: createRoleAssignment }),
+    roles: createMemoryRepository({ createModel: createRole }),
     users: createMemoryRepository({ createModel: createUser })
   };
 }
@@ -54,6 +58,16 @@ function createMongoRepositories({ mongoUri }) {
       collectionName: "organizations",
       createModel: createOrganization,
       getCollection: getCollection("organizations")
+    }),
+    roleAssignments: createMongoRepository({
+      collectionName: "roleAssignments",
+      createModel: createRoleAssignment,
+      getCollection: getCollection("roleAssignments")
+    }),
+    roles: createMongoRepository({
+      collectionName: "roles",
+      createModel: createRole,
+      getCollection: getCollection("roles")
     }),
     users: createMongoRepository({
       collectionName: "users",

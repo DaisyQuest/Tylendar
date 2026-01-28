@@ -9,5 +9,6 @@ describe("client module in node", () => {
 
     expect(typeof client.renderProfile).toBe("function");
     expect(typeof client.init).toBe("function");
+    expect(typeof client.renderEmbedWidget).toBe("function");
   });
 });

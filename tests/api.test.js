@@ -151,4 +151,109 @@ describe("API modules", () => {
       .send({ calendarId: "cal-2" });
     expect(eventDeleteMissing.status).toBe(404);
   });
+
+  test("roles, sharing, developer, and embed flows", async () => {
+    const repositories = createRepositories({ useInMemory: true });
+    await seedDatabase(repositories);
+    const app = createApp({ repositories });
+
+    const login = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const token = login.body.token;
+
+    const roleResponse = await request(app)
+      .post("/api/roles")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        id: "role-99",
+        orgId: "org-1",
+        name: "Viewer",
+        permissions: ["View Calendar"]
+      });
+    expect(roleResponse.status).toBe(201);
+
+    const rolesList = await request(app)
+      .get("/api/roles?orgId=org-1")
+      .set("Authorization", `Bearer ${token}`);
+    expect(rolesList.body.roles.length).toBeGreaterThan(0);
+
+    const rolesListAll = await request(app)
+      .get("/api/roles")
+      .set("Authorization", `Bearer ${token}`);
+    expect(rolesListAll.body.roles.length).toBeGreaterThan(0);
+
+    const assignmentResponse = await request(app)
+      .post("/api/roles/assignments")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        id: "assign-99",
+        orgId: "org-1",
+        roleId: "role-99",
+        userId: "user-1",
+        assignedBy: "user-1"
+      });
+    expect(assignmentResponse.status).toBe(201);
+
+    const assignmentsList = await request(app)
+      .get("/api/roles/assignments?orgId=org-1")
+      .set("Authorization", `Bearer ${token}`);
+    expect(assignmentsList.body.assignments.length).toBeGreaterThan(0);
+
+    const assignmentsByRole = await request(app)
+      .get("/api/roles/assignments?roleId=role-99")
+      .set("Authorization", `Bearer ${token}`);
+    expect(assignmentsByRole.body.assignments.length).toBeGreaterThan(0);
+
+    const assignmentsByUser = await request(app)
+      .get("/api/roles/assignments?userId=user-1")
+      .set("Authorization", `Bearer ${token}`);
+    expect(assignmentsByUser.body.assignments.length).toBeGreaterThan(0);
+
+    const sharingPreview = await request(app).get("/api/sharing/preview?calendarId=cal-1");
+    expect(sharingPreview.body.options.length).toBeGreaterThan(0);
+
+    const sharingPreviewDefault = await request(app).get("/api/sharing/preview");
+    expect(sharingPreviewDefault.body.calendarId).toBe("cal-1");
+
+    const shareLink = await request(app)
+      .post("/api/sharing/link")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ calendarId: "cal-1" });
+    expect(shareLink.status).toBe(201);
+
+    const shareLinkDefault = await request(app)
+      .post("/api/sharing/link")
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(shareLinkDefault.body.link).toContain("/share/cal-1");
+
+    const exportResponse = await request(app)
+      .post("/api/sharing/export")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ calendarId: "cal-1", format: "ICS" });
+    expect(exportResponse.status).toBe(201);
+
+    const exportDefault = await request(app)
+      .post("/api/sharing/export")
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(exportDefault.body.format).toBe("ICS");
+
+    const embedResponse = await request(app).get("/api/calendars/cal-1/embed");
+    expect(embedResponse.body.calendar.id).toBe("cal-1");
+
+    const privateCalendar = await request(app)
+      .post("/api/calendars")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ id: "cal-private", name: "Private", ownerId: "org-1", ownerType: "organization", isPublic: false });
+    expect(privateCalendar.status).toBe(201);
+
+    const embedPrivate = await request(app).get("/api/calendars/cal-private/embed");
+    expect(embedPrivate.status).toBe(403);
+
+    const embedMissing = await request(app).get("/api/calendars/missing/embed");
+    expect(embedMissing.status).toBe(404);
+
+    const developer = await request(app).get("/api/developer/portal");
+    expect(developer.body.resources.length).toBeGreaterThan(0);
+  });
 });

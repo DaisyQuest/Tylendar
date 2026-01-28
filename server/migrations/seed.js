@@ -63,12 +63,39 @@ function buildSeedData() {
     }
   ];
 
+  const roles = [
+    {
+      id: "role-1",
+      orgId: organization.id,
+      name: "Event Coordinator",
+      permissions: ["Create Events", "Comment on Calendar", "View Calendar"]
+    },
+    {
+      id: "role-2",
+      orgId: organization.id,
+      name: "Calendar Steward",
+      permissions: ["Manage Calendar", "Add to Calendar", "View Calendar"]
+    }
+  ];
+
+  const roleAssignments = [
+    {
+      id: "assign-1",
+      orgId: organization.id,
+      roleId: roles[0].id,
+      userId: users[1].id,
+      assignedBy: users[0].id
+    }
+  ];
+
   return {
     organization,
     users,
     calendars,
     permissions,
-    events
+    events,
+    roles,
+    roleAssignments
   };
 }
 
@@ -80,6 +107,12 @@ async function seedDatabase(repositories) {
   await repositories.calendars.seed(seed.calendars);
   await repositories.calendarPermissions.seed(seed.permissions);
   await repositories.events.seed(seed.events);
+  if (repositories.roles) {
+    await repositories.roles.seed(seed.roles);
+  }
+  if (repositories.roleAssignments) {
+    await repositories.roleAssignments.seed(seed.roleAssignments);
+  }
 
   return seed;
 }
