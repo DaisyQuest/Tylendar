@@ -67,7 +67,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
     - Simulate failures and ensure graceful degradation.
     - Validate retries and fallback messaging across API and UI flows.
 15. **Home Page Experience**
-    - Validate hero banner, login/register actions, highlights, and call-to-action components render correctly.
+    - Validate the simplified hero banner and login/register actions on the home page.
+    - Confirm the Home Details page renders highlights, dashboards, calendar previews, access, and MessageBoard sections.
 16. **Merge & Dependency Integrity**
     - Regenerate `package-lock.json` and confirm dependency resolution remains stable.
     - Verify recent merges compile and pass full integration coverage.
