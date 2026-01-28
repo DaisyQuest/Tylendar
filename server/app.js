@@ -47,6 +47,10 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     res.sendFile(path.join(__dirname, "..", "client", "index.html"));
   });
 
+  app.get("/details", (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "client", "details.html"));
+  });
+
   app.get("/api/flags", (req, res) => {
     res.json(flags);
   });

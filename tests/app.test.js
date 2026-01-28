@@ -7,7 +7,15 @@ describe("server app", () => {
     const response = await request(app).get("/");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain("Tylendar");
+    expect(response.text).toContain("social calendar space");
+  });
+
+  test("serves home details page", async () => {
+    const app = createApp();
+    const response = await request(app).get("/details");
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("User Management & Profile");
   });
 
   test("serves feature flags with overrides", async () => {
