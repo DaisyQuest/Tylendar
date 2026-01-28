@@ -11,6 +11,9 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 - Serves as the **single source of truth** for cross-feature integration testing.
 
 ## Master Integration Test Scenarios
+1. **Foundation Configuration**
+   - Validate environment config loader (MongoDB URI).
+   - Confirm build-time and account feature flags merge correctly.
 1. **User Onboarding & Profile**
    - Create user, update profile, verify permissions.
 2. **Organization Lifecycle**
@@ -31,13 +34,17 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Assign granular permissions; verify immediate enforcement.
 10. **Audit History**
     - Ensure audit logs surface readable history.
-11. **Embed Widget**
+11. **Monitoring & Health**
+    - Validate monitoring payloads and health checks.
+12. **API Boundaries**
+    - Verify auth/org/calendar/event/permissions/audit/monitoring modules respond with expected contracts.
+13. **Embed Widget**
     - Load embedded calendar and validate API access.
-12. **Social Sharing & Export**
+14. **Social Sharing & Export**
     - Validate exports and shareable links.
-13. **Monitoring & Admin Dashboards**
+15. **Monitoring & Admin Dashboards**
     - Validate service health, metrics, and operational views.
-14. **Fault Tolerance**
+16. **Fault Tolerance**
     - Simulate failures and ensure graceful degradation.
 
 ## Coverage Requirements
