@@ -1,11 +1,25 @@
 const express = require("express");
 const path = require("path");
 
+const { createAuthRouter } = require("./api/auth");
+const { createAuditRouter } = require("./api/audit");
+const { createCalendarRouter } = require("./api/calendar");
+const { createEventRouter } = require("./api/event");
+const { createMonitoringRouter } = require("./api/monitoring");
+const { createOrgRouter } = require("./api/org");
+const { createPermissionsRouter } = require("./api/permissions");
+const { getFeatureFlags } = require("./config/featureFlags");
+const { getEnv } = require("./config/env");
+const { createSessionStore } = require("./auth/sessionStore");
+const { attachSession } = require("./middleware/auth");
+const { requireFeature } = require("./middleware/featureFlags");
+const { createPermissionGuard } = require("./middleware/permissions");
+const { createRepositories } = require("./repositories");
+const { createAuditService } = require("./services/auditService");
 const {
   getAccessMatrix,
   getCalendarView,
   getEventListView,
-  getFeatureFlags,
   getHomeHighlights,
   getMessageBoard,
   getOrganizationDashboard,
@@ -13,11 +27,21 @@ const {
   getUserProfile
 } = require("./data/sampleData");
 
-function createApp({ featureOverrides } = {}) {
+function createApp({ featureOverrides, repositories, auditService, sessionStore, envOverrides } = {}) {
   const app = express();
-  const flags = getFeatureFlags(featureOverrides);
+  const env = getEnv(envOverrides);
+  const flags = getFeatureFlags({ overrides: featureOverrides, envFlags: env.featureFlags });
+  const repos = repositories || createRepositories({ envOverrides });
+  const audit = auditService || createAuditService({ auditRepository: repos.audit });
+  const sessions = sessionStore || createSessionStore();
+  const permissionGuard = createPermissionGuard({
+    calendarPermissionsRepository: repos.calendarPermissions,
+    auditService: audit
+  });
 
+  app.use(express.json());
   app.use("/static", express.static(path.join(__dirname, "..", "client")));
+  app.use(attachSession({ sessionStore: sessions, userRepository: repos.users }));
 
   app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "client", "index.html"));
@@ -61,6 +85,44 @@ function createApp({ featureOverrides } = {}) {
 
   app.get("/api/events/:eventId/comments", (req, res) => {
     res.json(getMessageBoard(req.params.eventId));
+  });
+
+  app.use("/api/auth", requireFeature("auth", flags), createAuthRouter({
+    flags,
+    sessionStore: sessions,
+    userRepository: repos.users,
+    auditService: audit
+  }));
+  app.use("/api/org", requireFeature("org", flags), createOrgRouter({
+    organizationsRepository: repos.organizations,
+    auditService: audit
+  }));
+  app.use("/api/calendars", requireFeature("calendar", flags), createCalendarRouter({
+    calendarsRepository: repos.calendars,
+    permissionGuard,
+    auditService: audit
+  }));
+  app.use("/api/events", requireFeature("event", flags), createEventRouter({
+    eventsRepository: repos.events,
+    permissionGuard,
+    auditService: audit
+  }));
+  app.use("/api/permissions", requireFeature("permissions", flags), createPermissionsRouter({
+    calendarPermissionsRepository: repos.calendarPermissions,
+    auditService: audit
+  }));
+  app.use("/api/audit", requireFeature("audit", flags), createAuditRouter({
+    auditService: audit
+  }));
+  app.use("/api/monitoring", requireFeature("monitoring", flags), createMonitoringRouter({
+    repositories: repos
+  }));
+
+  app.use((err, req, res, next) => {
+    if (err && err.status) {
+      return res.status(err.status).json({ error: err.message, details: err.details || [] });
+    }
+    return next(err);
   });
 
   return app;
