@@ -1,3 +1,7 @@
+const { hashPassword } = require("../auth/passwords");
+
+const DEFAULT_USER_PASSWORD = "Password123!";
+
 function buildSeedData() {
   const organization = {
     id: "org-1",
@@ -12,14 +16,16 @@ function buildSeedData() {
       name: "Avery Chen",
       email: "avery@example.com",
       organizationId: organization.id,
-      role: "admin"
+      role: "admin",
+      passwordHash: hashPassword(DEFAULT_USER_PASSWORD)
     },
     {
       id: "user-2",
       name: "Riley Patel",
       email: "riley@example.com",
       organizationId: organization.id,
-      role: "member"
+      role: "member",
+      passwordHash: hashPassword(DEFAULT_USER_PASSWORD)
     }
   ];
 
@@ -95,7 +101,8 @@ function buildSeedData() {
     permissions,
     events,
     roles,
-    roleAssignments
+    roleAssignments,
+    defaultPassword: DEFAULT_USER_PASSWORD
   };
 }
 
@@ -119,5 +126,6 @@ async function seedDatabase(repositories) {
 
 module.exports = {
   buildSeedData,
-  seedDatabase
+  seedDatabase,
+  DEFAULT_USER_PASSWORD
 };

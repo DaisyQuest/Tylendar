@@ -1,21 +1,72 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase } = require("../server/migrations/seed");
+const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
 
 describe("auth API", () => {
-  test("login, session, logout flow", async () => {
+  test("registration and login flow", async () => {
     const repositories = createRepositories({ useInMemory: true });
     await seedDatabase(repositories);
     const app = createApp({ repositories });
 
-    const missing = await request(app).post("/api/auth/login").send({});
+    const missing = await request(app).post("/api/auth/register").send({});
     expect(missing.status).toBe(400);
 
-    const notFound = await request(app).post("/api/auth/login").send({ userId: "missing" });
+    const shortPassword = await request(app).post("/api/auth/register").send({
+      name: "Short",
+      email: "short@example.com",
+      password: "short",
+      organizationId: "org-1"
+    });
+    expect(shortPassword.status).toBe(400);
+
+    const unknownOrg = await request(app).post("/api/auth/register").send({
+      name: "Unknown Org",
+      email: "unknown@example.com",
+      password: "Password123!",
+      organizationId: "org-missing"
+    });
+    expect(unknownOrg.status).toBe(404);
+
+    const register = await request(app).post("/api/auth/register").send({
+      name: "New User",
+      email: "newuser@example.com",
+      password: "Password123!",
+      organizationId: "org-1",
+      role: "member"
+    });
+    expect(register.status).toBe(201);
+    expect(register.body.token).toBeDefined();
+    expect(register.body.user.email).toBe("newuser@example.com");
+    expect(register.body.user.passwordHash).toBeUndefined();
+
+    const duplicate = await request(app).post("/api/auth/register").send({
+      name: "New User",
+      email: "newuser@example.com",
+      password: "Password123!",
+      organizationId: "org-1"
+    });
+    expect(duplicate.status).toBe(409);
+
+    const loginMissing = await request(app).post("/api/auth/login").send({});
+    expect(loginMissing.status).toBe(400);
+
+    const notFound = await request(app).post("/api/auth/login").send({
+      email: "missing@example.com",
+      password: "Password123!"
+    });
     expect(notFound.status).toBe(404);
 
-    const login = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const invalidPassword = await request(app).post("/api/auth/login").send({
+      email: "newuser@example.com",
+      password: "BadPassword!"
+    });
+    expect(invalidPassword.status).toBe(401);
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
     expect(login.body.token).toBeDefined();
     expect(login.body.user.id).toBe("user-1");
 

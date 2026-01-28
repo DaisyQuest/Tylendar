@@ -1,7 +1,7 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase } = require("../server/migrations/seed");
+const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
 
 describe("API modules", () => {
   test("org, calendar, permissions, audit flow", async () => {
@@ -9,7 +9,10 @@ describe("API modules", () => {
     await seedDatabase(repositories);
     const app = createApp({ repositories });
 
-    const login = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
     const token = login.body.token;
 
     const badOrg = await request(app)
@@ -157,7 +160,10 @@ describe("API modules", () => {
     await seedDatabase(repositories);
     const app = createApp({ repositories });
 
-    const login = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_USER_PASSWORD
+    });
     const token = login.body.token;
 
     const roleResponse = await request(app)

@@ -12,7 +12,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 
 ## Master Integration Test Scenarios
 1. **User Onboarding & Profile**
-   - Create user, authenticate session, update profile, verify permissions.
+   - Register a user with email + password, authenticate session, update profile, verify permissions.
+   - Validate login rejects invalid credentials and accepts password-based sign-ins.
    - Validate User Management + Profile UI sections render notifications and activity feed.
    - Confirm feature flags toggle profile modules without breaking navigation.
    - Verify profile edits persist across session refresh and re-login.

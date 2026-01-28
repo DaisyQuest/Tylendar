@@ -19,7 +19,10 @@ describe("feature flags", () => {
 
   test("requireFeature blocks disabled modules", async () => {
     const app = createApp({ featureOverrides: { auth: false } });
-    const response = await request(app).post("/api/auth/login").send({ userId: "user-1" });
+    const response = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: "Password123!"
+    });
     expect(response.status).toBe(404);
   });
 });
