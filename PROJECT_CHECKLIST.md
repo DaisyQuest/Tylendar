@@ -29,14 +29,14 @@
 - [x] **T-0303**: Build shared UI components (cards, forms, tables, modals).
 
 ## Feature Development
-- [ ] **T-0401**: Beautiful Home Page.
-- [ ] **T-0402**: Beautiful User Management + Profile Features.
-- [ ] **T-0403**: Beautiful User Dashboard.
-- [ ] **T-0404**: Beautiful Organization Dashboard.
-- [ ] **T-0405**: Calendar View (month/2-week/week/day).
-- [ ] **T-0406**: Event List View (year/n-month/month/week/day).
-- [ ] **T-0407**: Manage Access View (granular permission assignments).
-- [ ] **T-0408**: MessageBoard Feature on Events (comments).
+- [x] **T-0401**: Beautiful Home Page.
+- [x] **T-0402**: Beautiful User Management + Profile Features.
+- [x] **T-0403**: Beautiful User Dashboard.
+- [x] **T-0404**: Beautiful Organization Dashboard.
+- [x] **T-0405**: Calendar View (month/2-week/week/day).
+- [x] **T-0406**: Event List View (year/n-month/month/week/day).
+- [x] **T-0407**: Manage Access View (granular permission assignments).
+- [x] **T-0408**: MessageBoard Feature on Events (comments).
 - [ ] **T-0409**: Calendar Embed Widget (calls main API).
 - [ ] **T-0410**: Social Media Sharing / Export Features.
 - [ ] **T-0411**: Beautiful Audit History UI.
@@ -51,8 +51,8 @@
 - [ ] **T-0601**: Unit tests for all domain models (95%+ branch coverage).
 - [ ] **T-0602**: Unit tests for permission enforcement.
 - [ ] **T-0603**: Integration tests for API endpoints.
-- [ ] **T-0604**: UI component tests.
-- [ ] **T-0605**: Master Integration Test expansion to include all features.
+- [x] **T-0604**: UI component tests.
+- [x] **T-0605**: Master Integration Test expansion to include all features.
 
 ## Deployment
 - [ ] **T-0701**: Azure App Service deployment pipeline.

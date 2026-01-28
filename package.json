@@ -1,21 +1,41 @@
 {
   "name": "tylendar",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Tylendar calendar system",
   "type": "commonjs",
+  "main": "server/index.js",
   "scripts": {
+    "start": "node server/index.js",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "dependencies": {
+    "express": "^4.19.2",
     "mongodb": "^6.5.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "jest": "^29.7.0",
-    "prettier": "^3.2.5"
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.2.5",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "server/**/*.js",
+      "client/**/*.js",
+      "!server/index.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 95,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      }
+    }
   }
 }
