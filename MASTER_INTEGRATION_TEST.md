@@ -75,6 +75,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 15. **Home Page Experience**
     - Validate the simplified hero banner and login/register actions on the home page.
     - Confirm the Home Details page renders highlights, dashboards, calendar previews, access, and MessageBoard sections.
+    - Verify the Home Details feature preview layout uses the two-column grid at desktop widths to reduce vertical scrolling.
 16. **Merge & Dependency Integrity**
     - Regenerate `package-lock.json` and confirm dependency resolution remains stable.
     - Verify recent merges compile and pass full integration coverage.
