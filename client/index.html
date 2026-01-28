@@ -1,117 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Social Calendar Space</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <title>Tylendar</title>
+    <link rel="stylesheet" href="styles/global.css" />
   </head>
   <body>
-    <header class="hero">
-      <nav class="nav">
-        <div class="logo">Tylendar</div>
-        <div class="nav-links">
-          <a href="#home">Home</a>
-          <a href="#user">Profiles</a>
-          <a href="#dashboard">Dashboards</a>
-          <a href="#calendar">Calendar</a>
-          <a href="#access">Access</a>
-          <a href="#messageboard">MessageBoard</a>
-        </div>
-        <div class="nav-actions">
-          <button class="ghost">Log in</button>
-          <button class="primary">Register</button>
-        </div>
-      </nav>
-      <section class="hero-banner" id="home">
-        <div>
-          <p class="eyebrow">Welcome to your social calendar space</p>
-          <h1>Plan together, celebrate together, and keep every moment connected.</h1>
-          <p class="subheading">
-            Tylendar feels like a friendly social feed for your events, with soft visuals, quick
-            glance views, and cozy collaboration.
-          </p>
-          <div class="hero-actions">
-            <button class="primary">Join the community</button>
-            <button class="secondary">Take a quick tour</button>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">Tylendar</div>
+        <nav class="nav-links">
+          <a href="#">Calendars</a>
+          <a href="#">Events</a>
+          <a href="#">Teams</a>
+        </nav>
+        <button class="primary-button">Create Event</button>
+      </header>
+      <main class="app-main">
+        <section class="card">
+          <h1>Welcome to Tylendar</h1>
+          <p>Plan, share, and collaborate with beautifully designed calendars.</p>
+          <div class="form-grid">
+            <label class="field">
+              <span>Calendar Name</span>
+              <input type="text" placeholder="Team Roadmap" />
+            </label>
+            <label class="field">
+              <span>Owner</span>
+              <input type="text" placeholder="owner@tylendar.com" />
+            </label>
+            <button class="secondary-button">Save</button>
           </div>
-        </div>
-        <div class="hero-card">
-          <div class="hero-card__title">Community Pulse</div>
-          <div class="hero-card__metric">48 friends planning together</div>
-          <p class="hero-card__detail">See what everyone is up to, in one soft glow.</p>
-          <div class="hero-card__badges">
-            <span>Friendly</span>
-            <span>Supportive</span>
-            <span>Shared</span>
-          </div>
-        </div>
-      </section>
-    </header>
-
-    <main class="main">
-      <section class="section" id="user">
-        <div class="section-heading">
-          <h2>User Management & Profile</h2>
-          <p>Personal profiles, gentle reminders, and your social rhythm.</p>
-        </div>
-        <div class="grid two">
-          <div class="card" id="profile-card"></div>
-          <div class="card" id="home-highlights"></div>
-        </div>
-      </section>
-
-      <section class="section" id="dashboard">
-        <div class="section-heading">
-          <h2>Dashboards</h2>
-          <p>Quick vibes for you and the crew without endless scrolling.</p>
-        </div>
-        <div class="grid two">
-          <div class="card" id="user-dashboard"></div>
-          <div class="card" id="org-dashboard"></div>
-        </div>
-      </section>
-
-      <section class="section" id="calendar">
-        <div class="section-heading">
-          <h2>Calendar & Event Views</h2>
-          <p>Month, 2-week, week, and day snapshots with list highlights.</p>
-        </div>
-        <div class="grid two">
-          <div class="card" id="calendar-view"></div>
-          <div class="card" id="event-list"></div>
-        </div>
-      </section>
-
-      <section class="section" id="access">
-        <div class="section-heading">
-          <h2>Manage Access</h2>
-          <p>Kind boundaries with clear permissions for every calendar.</p>
-        </div>
-        <div class="card" id="access-matrix"></div>
-      </section>
-
-      <section class="section" id="messageboard">
-        <div class="section-heading">
-          <h2>Event MessageBoard</h2>
-          <p>Chat, cheer, and keep conversations next to the moments.</p>
-        </div>
-        <div class="card" id="message-board"></div>
-      </section>
-    </main>
-
-    <footer class="footer">
-      <div>
-        <strong>Tylendar</strong>
-        <p>Social scheduling that feels warm, welcoming, and easy.</p>
-      </div>
-      <div class="footer-links">
-        <a href="#">Safety</a>
-        <a href="#">Community</a>
-        <a href="#">Help</a>
-      </div>
-    </footer>
-
-    <script src="/static/app.js" defer></script>
+        </section>
+        <section class="card">
+          <h2>Upcoming Events</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Product Sync</td>
+                <td>May 6</td>
+                <td>Jamie</td>
+              </tr>
+              <tr>
+                <td>Launch Review</td>
+                <td>May 12</td>
+                <td>Alex</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+      <footer class="app-footer">
+        <span>© 2024 Tylendar</span>
+        <a href="#">Privacy</a>
+        <a href="#">Support</a>
+      </footer>
+    </div>
   </body>
 </html>

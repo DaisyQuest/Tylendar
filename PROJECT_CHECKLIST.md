@@ -4,24 +4,24 @@
 
 ## Foundation
 - [x] **T-0001**: Initialize repository structure (server/client/shared/tests/scripts).
-- [ ] **T-0002**: Define environment configuration loader (MongoDB connection string from ENV).
-- [ ] **T-0003**: Define feature flag system (build-time + account config).
-- [ ] **T-0004**: Establish coding standards, linting, and formatting configs.
+- [x] **T-0002**: Define environment configuration loader (MongoDB connection string from ENV).
+- [x] **T-0003**: Define feature flag system (build-time + account config).
+- [x] **T-0004**: Establish coding standards, linting, and formatting configs.
 - [x] **T-0005**: Configure Jest, coverage thresholds (>=95% branches), and CI-friendly scripts.
 - [x] **T-0006**: Create Master Integration Test scaffold covering all major features.
 
 ## Domain Modeling & Data Access
-- [ ] **T-0101**: Define domain schemas/models (User, Organization, Calendar, CalendarPermissions, Event).
-- [ ] **T-0102**: Implement data access layer (repositories) with MongoDB.
-- [ ] **T-0103**: Implement validation layer for model inputs.
-- [ ] **T-0104**: Implement migration/seed utilities for local dev/test.
+- [x] **T-0101**: Define domain schemas/models (User, Organization, Calendar, CalendarPermissions, Event).
+- [x] **T-0102**: Implement data access layer (repositories) with MongoDB.
+- [x] **T-0103**: Implement validation layer for model inputs.
+- [x] **T-0104**: Implement migration/seed utilities for local dev/test.
 
 ## API Architecture
-- [ ] **T-0201**: Define API module boundaries (auth, org, calendar, event, permissions, audit, monitoring).
-- [ ] **T-0202**: Implement authentication + session management.
-- [ ] **T-0203**: Implement permissions enforcement middleware.
-- [ ] **T-0204**: Implement audit logging pipeline.
-- [ ] **T-0205**: Implement monitoring endpoints and admin dashboards.
+- [x] **T-0201**: Define API module boundaries (auth, org, calendar, event, permissions, audit, monitoring).
+- [x] **T-0202**: Implement authentication + session management.
+- [x] **T-0203**: Implement permissions enforcement middleware.
+- [x] **T-0204**: Implement audit logging pipeline.
+- [x] **T-0205**: Implement monitoring endpoints and admin dashboards.
 
 ## UI/UX Foundations
 - [x] **T-0301**: Define UI system design (themes, layout, nav shell).
