@@ -1,0 +1,34 @@
+{
+  "name": "tylendar",
+  "version": "1.0.0",
+  "description": "Tylendar calendar system",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "server/**/*.js",
+      "client/**/*.js",
+      "!server/index.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 95,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      }
+    }
+  }
+}

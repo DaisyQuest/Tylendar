@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tylendar | Unified Calendar Experience</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="nav">
+        <div class="logo">Tylendar</div>
+        <div class="nav-links">
+          <a href="#home">Home</a>
+          <a href="#user">User</a>
+          <a href="#dashboard">Dashboards</a>
+          <a href="#calendar">Calendar Views</a>
+          <a href="#access">Access</a>
+          <a href="#messageboard">MessageBoard</a>
+        </div>
+        <button class="primary">Request Demo</button>
+      </nav>
+      <section class="hero-content" id="home">
+        <div>
+          <p class="eyebrow">Enterprise Calendar System</p>
+          <h1>Beautiful scheduling, trusted permissions, and an experience teams love.</h1>
+          <p class="subheading">
+            Tylendar orchestrates every calendar touchpoint—from user profiles to organization
+            dashboards—with clarity, security, and elegant workflows.
+          </p>
+          <div class="hero-actions">
+            <button class="primary">Start Planning</button>
+            <button class="secondary">Explore Features</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="hero-card__title">System Health</div>
+          <div class="hero-card__metric">98% permission compliance</div>
+          <p class="hero-card__detail">Live insights across 48 active events.</p>
+          <div class="hero-card__badges">
+            <span>Realtime</span>
+            <span>Secure</span>
+            <span>Unified</span>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section class="section" id="user">
+        <div class="section-heading">
+          <h2>User Management & Profile</h2>
+          <p>Profile intelligence, personalized notifications, and quick actions.</p>
+        </div>
+        <div class="grid two">
+          <div class="card" id="profile-card"></div>
+          <div class="card" id="home-highlights"></div>
+        </div>
+      </section>
+
+      <section class="section" id="dashboard">
+        <div class="section-heading">
+          <h2>Dashboards</h2>
+          <p>High signal views for individual focus and organization-wide health.</p>
+        </div>
+        <div class="grid two">
+          <div class="card" id="user-dashboard"></div>
+          <div class="card" id="org-dashboard"></div>
+        </div>
+      </section>
+
+      <section class="section" id="calendar">
+        <div class="section-heading">
+          <h2>Calendar & Event Views</h2>
+          <p>Navigate month, 2-week, week, and day views alongside rich list filters.</p>
+        </div>
+        <div class="grid two">
+          <div class="card" id="calendar-view"></div>
+          <div class="card" id="event-list"></div>
+        </div>
+      </section>
+
+      <section class="section" id="access">
+        <div class="section-heading">
+          <h2>Manage Access</h2>
+          <p>Granular permission assignments across users, roles, and calendars.</p>
+        </div>
+        <div class="card" id="access-matrix"></div>
+      </section>
+
+      <section class="section" id="messageboard">
+        <div class="section-heading">
+          <h2>Event MessageBoard</h2>
+          <p>Collaborate with context-rich comments tied directly to events.</p>
+        </div>
+        <div class="card" id="message-board"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>
+        <strong>Tylendar</strong>
+        <p>Modern calendar intelligence for teams that move fast.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#">Security</a>
+        <a href="#">Status</a>
+        <a href="#">Docs</a>
+      </div>
+    </footer>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
