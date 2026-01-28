@@ -91,8 +91,9 @@ describe("client rendering", () => {
     expect(html).toContain("Ops");
   });
 
-  test("renderCalendarView includes summary", () => {
+  test("renderCalendarView includes summary and grid", () => {
     const html = renderCalendarView({
+      view: "month",
       label: "Month",
       summary: "Month view",
       days: ["Mon"],
@@ -101,6 +102,88 @@ describe("client rendering", () => {
 
     expect(html).toContain("Month Calendar View");
     expect(html).toContain("Event");
+    expect(html).toContain("calendar-grid");
+  });
+
+  test("renderCalendarView handles empty days and all-day events", () => {
+    const html = renderCalendarView({
+      view: "day",
+      label: "Day",
+      summary: "Day view",
+      days: [],
+      featuredEvents: [
+        { title: "No time", day: "Mon", calendar: "Team", owner: "Taylor" }
+      ]
+    });
+
+    expect(html).toContain("All day");
+    expect(html).toContain("No time");
+    expect(html).toContain("Mon");
+  });
+
+  test("renderCalendarView falls back when calendar metadata is missing", () => {
+    const html = renderCalendarView({
+      view: "week",
+      label: "Week",
+      summary: "Week view",
+      days: ["Tue"],
+      featuredEvents: [{ title: "Open slot", day: "Tue", time: "10:00 AM" }]
+    });
+
+    expect(html).toContain("Shared · Unassigned");
+  });
+
+  test("renderCalendarView sorts agenda items by day and time", () => {
+    const html = renderCalendarView({
+      view: "month",
+      label: "Schedule",
+      summary: "Agenda order",
+      days: ["Mon", "Tue"],
+      featuredEvents: [
+        { title: "Later", day: "Tue", time: "3:00 PM", calendar: "Cal", owner: "A" },
+        { title: "Mid", day: "Mon", time: "1:00 PM", calendar: "Cal", owner: "A" },
+        { title: "Early", day: "Mon", time: "8:00 AM", calendar: "Cal", owner: "A" }
+      ]
+    });
+
+    expect(html.indexOf("Early")).toBeLessThan(html.indexOf("Mid"));
+    expect(html.indexOf("Mid")).toBeLessThan(html.indexOf("Later"));
+  });
+
+  test("renderCalendarView handles missing featured events list", () => {
+    const html = renderCalendarView({
+      view: "custom",
+      label: "Week",
+      summary: "Empty agenda"
+    });
+
+    expect(html).toContain("No featured events scheduled yet.");
+    expect(html).toContain("calendar-pill--active");
+  });
+
+  test("renderCalendarView falls back to default label and summary", () => {
+    const html = renderCalendarView({
+      days: ["Mon"],
+      featuredEvents: []
+    });
+
+    expect(html).toContain("Calendar Calendar View");
+    expect(html).toContain("Overview of scheduled moments and focus blocks.");
+  });
+
+  test("renderCalendarView handles events outside configured days and slots", () => {
+    const html = renderCalendarView({
+      label: "Month",
+      summary: "Expanded",
+      days: ["Mon"],
+      featuredEvents: [
+        { title: "Overflow", day: "Sun", time: "7:00 AM", calendar: "Cal", owner: "A" },
+        { title: "Overflow Two", day: "Sun", time: "6:00 AM", calendar: "Cal", owner: "A" }
+      ]
+    });
+
+    expect(html).toContain("Overflow");
+    expect(html).toContain("Sun · 7:00 AM");
   });
 
   test("renderEventList handles empty items", () => {
