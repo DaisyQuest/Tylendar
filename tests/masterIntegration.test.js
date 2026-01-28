@@ -17,6 +17,7 @@ const REQUIRED_SCENARIOS = [
   "Monitoring & Admin Dashboards",
   "Fault Tolerance",
   "Home Page Experience",
+  "Merge & Dependency Integrity",
 ];
 
 const REQUIRED_DETAILS = [
@@ -45,12 +46,12 @@ describe("Master Integration Test documentation", () => {
     });
   });
 
-  test("lists all 15 numbered scenarios", () => {
+  test("lists all 16 numbered scenarios", () => {
     const scenarioLines = mitContents
       .split("\n")
       .filter((line) => /^\d+\.\s\*\*/.test(line));
 
-    expect(scenarioLines).toHaveLength(15);
+    expect(scenarioLines).toHaveLength(16);
   });
 
   test("states coverage requirements", () => {

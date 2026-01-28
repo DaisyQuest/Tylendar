@@ -1,0 +1,90 @@
+function buildSeedData() {
+  const organization = {
+    id: "org-1",
+    name: "Tylendar Community",
+    description: "Local community gatherings",
+    roles: ["owner", "admin", "member"]
+  };
+
+  const users = [
+    {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: organization.id,
+      role: "admin"
+    },
+    {
+      id: "user-2",
+      name: "Riley Patel",
+      email: "riley@example.com",
+      organizationId: organization.id,
+      role: "member"
+    }
+  ];
+
+  const calendars = [
+    {
+      id: "cal-1",
+      name: "Community Events",
+      ownerId: organization.id,
+      ownerType: "organization",
+      sharedOwnerIds: [users[0].id],
+      isPublic: true
+    }
+  ];
+
+  const permissions = [
+    {
+      id: "perm-1",
+      calendarId: calendars[0].id,
+      userId: users[0].id,
+      grantedBy: users[0].id,
+      permissions: ["View Calendar", "Manage Calendar", "Add to Calendar"]
+    },
+    {
+      id: "perm-2",
+      calendarId: calendars[0].id,
+      userId: users[1].id,
+      grantedBy: users[0].id,
+      permissions: ["View Calendar", "Comment on Calendar"]
+    }
+  ];
+
+  const events = [
+    {
+      id: "evt-1",
+      title: "Community Brunch",
+      description: "Monthly brunch gathering",
+      calendarIds: [calendars[0].id],
+      startsAt: new Date().toISOString(),
+      endsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      createdBy: users[0].id
+    }
+  ];
+
+  return {
+    organization,
+    users,
+    calendars,
+    permissions,
+    events
+  };
+}
+
+async function seedDatabase(repositories) {
+  const seed = buildSeedData();
+
+  await repositories.organizations.create(seed.organization);
+  await repositories.users.seed(seed.users);
+  await repositories.calendars.seed(seed.calendars);
+  await repositories.calendarPermissions.seed(seed.permissions);
+  await repositories.events.seed(seed.events);
+
+  return seed;
+}
+
+module.exports = {
+  buildSeedData,
+  seedDatabase
+};

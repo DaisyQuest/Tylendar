@@ -12,7 +12,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 
 ## Master Integration Test Scenarios
 1. **User Onboarding & Profile**
-   - Create user, update profile, verify permissions.
+   - Create user, authenticate session, update profile, verify permissions.
    - Validate User Management + Profile UI sections render notifications and activity feed.
    - Confirm feature flags toggle profile modules without breaking navigation.
    - Verify profile edits persist across session refresh and re-login.
@@ -27,7 +27,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Validate calendar list updates in real time for new shares.
 4. **Calendar Permissions Enforcement**
    - Validate each permission type across API and UI.
-   - Enforce permissions during event create/update/delete flows across multiple calendars.
+   - Enforce permissions middleware during event create/update/delete flows across multiple calendars.
    - Verify permission changes immediately restrict existing sessions without cache leaks.
    - Confirm audit logs capture denied actions with clear reasons.
 5. **Event Lifecycle**
@@ -50,7 +50,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Validate permission revocation removes access across all UI entry points.
 10. **Audit History**
     - Ensure audit logs surface readable history.
-    - Confirm audit entries map to user actions in multiple modules (calendar, permissions, comments).
+    - Confirm audit entries map to user actions in multiple modules (calendar, permissions, auth).
 11. **Embed Widget**
     - Load embedded calendar and validate API access.
     - Confirm embed respects calendar visibility and permission boundaries.
@@ -61,6 +61,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 13. **Monitoring & Admin Dashboards**
     - Validate service health, metrics, and operational views.
     - Verify operational metrics align with Embed Widget usage and availability.
+    - Confirm admin dashboards show counts for users, organizations, calendars, and events.
     - Confirm alerts trigger on simulated error rates and recover after resolution.
 14. **Fault Tolerance**
     - Simulate failures and ensure graceful degradation.
