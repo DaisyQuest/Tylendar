@@ -184,6 +184,32 @@ a {
   padding: 2rem 0;
 }
 
+.main.feature-preview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem 2rem;
+  padding: 0 3rem 3rem;
+  align-items: start;
+}
+
+.main.feature-preview .section {
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.main.feature-preview .section-heading {
+  margin-bottom: 0;
+}
+
+.main.feature-preview .grid {
+  gap: 1rem;
+}
+
+.main.feature-preview .card {
+  padding: 1.4rem;
+}
+
 .section-heading {
   margin-bottom: 1.6rem;
 }
@@ -510,5 +536,12 @@ a {
 
   .calendar-grid {
     grid-template-columns: 80px repeat(auto-fit, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .main.feature-preview {
+    grid-template-columns: 1fr;
+    padding: 0 2rem 2.5rem;
   }
 }
