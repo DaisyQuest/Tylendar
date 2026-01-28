@@ -10,6 +10,14 @@ const {
   renderEventList,
   renderHighlights,
   renderMessageBoard,
+  renderEmbedWidget,
+  renderSharingOptions,
+  renderAuditHistory,
+  renderRoleManagement,
+  renderFaultTolerance,
+  renderDeveloperPortal,
+  renderObservability,
+  renderOperationalAlerts,
   renderOrganizationStats,
   renderProfile
 } = require("../client/app");
@@ -132,6 +140,110 @@ describe("client rendering", () => {
     expect(html).toContain("MessageBoard");
     expect(html).toContain("Hello");
   });
+
+  test("renderEmbedWidget includes snippet", () => {
+    const html = renderEmbedWidget({
+      title: "Embed",
+      theme: "Glow",
+      visibility: "Public",
+      endpoint: "/api",
+      sampleSnippet: "<iframe />"
+    });
+
+    expect(html).toContain("Embed Widget");
+    expect(html).toContain("<iframe");
+  });
+
+  test("renderSharingOptions lists channels", () => {
+    const html = renderSharingOptions({
+      options: [
+        { channel: "Social", description: "Share", link: "link" }
+      ]
+    });
+
+    expect(html).toContain("Social Sharing");
+    expect(html).toContain("Share");
+  });
+
+  test("renderSharingOptions renders formats when provided", () => {
+    const html = renderSharingOptions({
+      options: [
+        { channel: "Export", description: "Export", formats: ["ICS", "CSV"] }
+      ]
+    });
+
+    expect(html).toContain("Formats: ICS, CSV");
+  });
+
+  test("renderAuditHistory lists entries", () => {
+    const html = renderAuditHistory({
+      entries: [
+        { action: "login", summary: "Logged in", actor: "A", status: "ok", occurredAt: "now" }
+      ]
+    });
+
+    expect(html).toContain("Audit History");
+    expect(html).toContain("Logged in");
+  });
+
+  test("renderRoleManagement renders roles and assignments", () => {
+    const html = renderRoleManagement({
+      roles: [
+        { name: "Admin", summary: "Full", permissions: ["All"] }
+      ],
+      assignments: [
+        { user: "A", roleId: "role-1", assignedBy: "B", assignedAt: "today" }
+      ]
+    });
+
+    expect(html).toContain("Role Management");
+    expect(html).toContain("Admin");
+    expect(html).toContain("role-1");
+  });
+
+  test("renderFaultTolerance lists patterns", () => {
+    const html = renderFaultTolerance({
+      snapshots: [
+        { pattern: "Retries", detail: "ok", status: "Healthy" }
+      ]
+    });
+
+    expect(html).toContain("Fault Tolerance");
+    expect(html).toContain("Retries");
+  });
+
+  test("renderDeveloperPortal renders resources", () => {
+    const html = renderDeveloperPortal({
+      headline: "Developer Hub",
+      description: "Docs",
+      resources: [{ title: "API", detail: "Ref" }],
+      status: "Updated"
+    });
+
+    expect(html).toContain("Developer Hub");
+    expect(html).toContain("API");
+  });
+
+  test("renderObservability shows metrics", () => {
+    const html = renderObservability({
+      uptime: "99%",
+      latencyP95: "1s",
+      errorRate: "0%",
+      highlights: ["ok"]
+    });
+
+    expect(html).toContain("Observability");
+    expect(html).toContain("99%");
+  });
+
+  test("renderOperationalAlerts shows alerts", () => {
+    const html = renderOperationalAlerts({
+      alerts: [{ severity: "info", message: "All good", status: "ok" }]
+    });
+
+    expect(html).toContain("Operational Alerts");
+    expect(html).toContain("All good");
+  });
 });
 
 describe("client data loading", () => {
@@ -155,6 +267,14 @@ describe("client data loading", () => {
       <div id="event-list"></div>
       <div id="access-matrix"></div>
       <div id="message-board"></div>
+      <div id="embed-widget"></div>
+      <div id="sharing-options"></div>
+      <div id="audit-history"></div>
+      <div id="role-management"></div>
+      <div id="fault-tolerance"></div>
+      <div id="developer-portal"></div>
+      <div id="observability"></div>
+      <div id="operational-alerts"></div>
     `;
 
     global.fetch = jest.fn((url) => {
@@ -198,6 +318,41 @@ describe("client data loading", () => {
         "/api/events/evt-100/comments": {
           eventId: "evt-100",
           entries: [{ author: "A", message: "Hi", time: "now" }]
+        },
+        "/api/embed/widget?calendarId=cal-1": {
+          title: "Embed",
+          theme: "Glow",
+          visibility: "Public",
+          endpoint: "/api",
+          sampleSnippet: "<iframe />"
+        },
+        "/api/sharing/preview?calendarId=cal-1": {
+          options: [{ channel: "Social", description: "Share", link: "link" }]
+        },
+        "/api/audit/history-snapshot": {
+          entries: [{ action: "login", summary: "Logged in", actor: "A", status: "ok", occurredAt: "now" }]
+        },
+        "/api/roles/summary?orgId=org-1": {
+          roles: [{ name: "Admin", summary: "Full", permissions: ["All"] }],
+          assignments: [{ user: "A", roleId: "role-1", assignedBy: "B", assignedAt: "today" }]
+        },
+        "/api/fault-tolerance/snapshot": {
+          snapshots: [{ pattern: "Retries", detail: "ok", status: "Healthy" }]
+        },
+        "/api/developer/portal": {
+          headline: "Dev",
+          description: "Docs",
+          resources: [{ title: "API", detail: "Ref" }],
+          status: "Updated"
+        },
+        "/api/monitoring/observability": {
+          uptime: "99%",
+          latencyP95: "1s",
+          errorRate: "0%",
+          highlights: ["ok"]
+        },
+        "/api/monitoring/alerts": {
+          alerts: [{ severity: "info", message: "All good", status: "ok" }]
         }
       };
 
@@ -211,5 +366,6 @@ describe("client data loading", () => {
 
     expect(document.getElementById("profile-card").innerHTML).toContain("Test");
     expect(document.getElementById("message-board").innerHTML).toContain("evt-100");
+    expect(document.getElementById("embed-widget").innerHTML).toContain("Embed");
   });
 });

@@ -14,6 +14,7 @@ describe("feature flags", () => {
   test("getFeatureFlags returns defaults", () => {
     const flags = getFeatureFlags();
     expect(flags.auth).toBe(true);
+    expect(flags.embedWidget).toBe(true);
   });
 
   test("requireFeature blocks disabled modules", async () => {

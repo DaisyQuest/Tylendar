@@ -64,4 +64,34 @@ describe("server app", () => {
     expect(access.body.entries).toHaveLength(3);
     expect(message.body.entries).toHaveLength(1);
   });
+
+  test("serves embed widget and sharing preview", async () => {
+    const app = createApp();
+
+    const embed = await request(app).get("/api/embed/widget?calendarId=cal-1");
+    const sharing = await request(app).get("/api/sharing/preview?calendarId=cal-1");
+
+    expect(embed.body.calendarId).toBe("cal-1");
+    expect(sharing.body.options.length).toBeGreaterThan(0);
+  });
+
+  test("serves audit history snapshots and role summaries", async () => {
+    const app = createApp();
+
+    const audit = await request(app).get("/api/audit/history-snapshot");
+    const roles = await request(app).get("/api/roles/summary?orgId=org-1");
+
+    expect(audit.body.entries.length).toBeGreaterThan(0);
+    expect(roles.body.roles.length).toBeGreaterThan(0);
+  });
+
+  test("serves fault tolerance snapshot and developer portal", async () => {
+    const app = createApp();
+
+    const faultTolerance = await request(app).get("/api/fault-tolerance/snapshot");
+    const developer = await request(app).get("/api/developer/portal");
+
+    expect(faultTolerance.body.snapshots.length).toBeGreaterThan(0);
+    expect(developer.body.resources.length).toBeGreaterThan(0);
+  });
 });

@@ -3,6 +3,8 @@ const { createCalendar, validateCalendar } = require("../server/models/calendar"
 const { createCalendarPermissions, validateCalendarPermissions } = require("../server/models/calendarPermissions");
 const { createEvent, validateEvent } = require("../server/models/event");
 const { createOrganization, validateOrganization } = require("../server/models/organization");
+const { createRole, validateRole } = require("../server/models/role");
+const { createRoleAssignment, validateRoleAssignment } = require("../server/models/roleAssignment");
 const { createUser, validateUser } = require("../server/models/user");
 
 describe("domain models", () => {
@@ -469,5 +471,72 @@ describe("domain models", () => {
       details: "ok"
     });
     expect(validAudit.valid).toBe(true);
+  });
+
+  test("createRole validates permissions", () => {
+    expect(() => createRole()).toThrow("Validation failed");
+    const role = createRole({
+      id: "role-1",
+      orgId: "org-1",
+      name: "Viewer",
+      permissions: ["View Calendar"]
+    });
+    expect(role.description).toBe("");
+
+    const invalidRole = validateRole({
+      id: "role-2",
+      orgId: "org-1",
+      name: "Invalid",
+      permissions: []
+    });
+    expect(invalidRole.valid).toBe(false);
+
+    const invalidDescription = validateRole({
+      id: "role-3",
+      orgId: "org-1",
+      name: "Invalid",
+      permissions: ["View Calendar"],
+      description: 123
+    });
+    expect(invalidDescription.valid).toBe(false);
+
+    const invalidPermissions = validateRole({
+      id: "role-4",
+      orgId: "org-1",
+      name: "Invalid",
+      permissions: "View Calendar"
+    });
+    expect(invalidPermissions.valid).toBe(false);
+  });
+
+  test("createRoleAssignment enforces required fields", () => {
+    expect(() => createRoleAssignment()).toThrow("Validation failed");
+    const assignment = createRoleAssignment({
+      id: "assign-1",
+      orgId: "org-1",
+      roleId: "role-1",
+      userId: "user-1",
+      assignedBy: "user-2"
+    });
+    expect(assignment.assignedAt).toBeDefined();
+
+    const invalidAssignment = validateRoleAssignment({
+      id: "assign-2",
+      orgId: "org-1",
+      roleId: "role-1",
+      userId: "user-1",
+      assignedBy: "user-2",
+      assignedAt: "invalid"
+    });
+    expect(invalidAssignment.valid).toBe(false);
+
+    const missingAssignedAt = validateRoleAssignment({
+      id: "assign-3",
+      orgId: "org-1",
+      roleId: "role-1",
+      userId: "user-1",
+      assignedBy: "user-2"
+    });
+    expect(missingAssignedAt.valid).toBe(false);
   });
 });

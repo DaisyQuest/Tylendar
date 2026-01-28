@@ -1,11 +1,19 @@
 const {
   getAccessMatrix,
+  getAuditHistory,
   getCalendarView,
+  getDeveloperPortal,
+  getEmbedWidget,
   getEventListView,
   getFeatureFlags,
+  getFaultToleranceSnapshots,
   getHomeHighlights,
   getMessageBoard,
+  getObservabilityOverview,
+  getOperationalAlerts,
   getOrganizationDashboard,
+  getRoleManagement,
+  getSharingOptions,
   getUserDashboard,
   getUserProfile
 } = require("../server/data/sampleData");
@@ -89,5 +97,54 @@ describe("sample data providers", () => {
     expect(board.total).toBeGreaterThan(0);
     expect(exact.eventId).toBe("evt-200");
     expect(defaultBoard.entries.length).toBeGreaterThan(0);
+  });
+
+  test("getAuditHistory returns entries", () => {
+    const history = getAuditHistory();
+
+    expect(history.length).toBeGreaterThan(0);
+    expect(history[0]).toHaveProperty("action");
+  });
+
+  test("getEmbedWidget returns embed details", () => {
+    const widget = getEmbedWidget("cal-1");
+    const fallback = getEmbedWidget("missing");
+
+    expect(widget.calendarId).toBe("cal-1");
+    expect(widget.sampleSnippet).toContain("iframe");
+    expect(fallback.calendarId).toBe("cal-1");
+  });
+
+  test("getSharingOptions returns options by calendar", () => {
+    const options = getSharingOptions("cal-1");
+
+    expect(options.length).toBeGreaterThan(0);
+  });
+
+  test("getRoleManagement returns roles and assignments", () => {
+    const management = getRoleManagement("org-1");
+
+    expect(management.roles.length).toBeGreaterThan(0);
+    expect(management.assignments.length).toBeGreaterThan(0);
+  });
+
+  test("getFaultToleranceSnapshots returns patterns", () => {
+    const snapshots = getFaultToleranceSnapshots();
+
+    expect(snapshots[0]).toHaveProperty("pattern");
+  });
+
+  test("getDeveloperPortal returns resources", () => {
+    const portal = getDeveloperPortal();
+
+    expect(portal.resources.length).toBeGreaterThan(0);
+  });
+
+  test("getObservabilityOverview and alerts return data", () => {
+    const overview = getObservabilityOverview();
+    const alerts = getOperationalAlerts();
+
+    expect(overview.uptime).toContain("%");
+    expect(alerts.length).toBeGreaterThan(0);
   });
 });

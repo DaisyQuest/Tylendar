@@ -14,6 +14,14 @@ describe("DOMContentLoaded handler", () => {
       <div id="event-list"></div>
       <div id="access-matrix"></div>
       <div id="message-board"></div>
+      <div id="embed-widget"></div>
+      <div id="sharing-options"></div>
+      <div id="audit-history"></div>
+      <div id="role-management"></div>
+      <div id="fault-tolerance"></div>
+      <div id="developer-portal"></div>
+      <div id="observability"></div>
+      <div id="operational-alerts"></div>
     `;
 
     global.fetch = jest.fn(() => Promise.resolve({ ok: false }));
