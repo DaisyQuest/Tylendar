@@ -79,17 +79,142 @@ function renderOrganizationStats(org) {
 }
 
 function renderCalendarView(calendar) {
+  const viewLabel = calendar.label || "Calendar";
+  const summary = calendar.summary || "Overview of scheduled moments and focus blocks.";
+  const days =
+    Array.isArray(calendar.days) && calendar.days.length
+      ? calendar.days
+      : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const events = Array.isArray(calendar.featuredEvents) ? calendar.featuredEvents : [];
+  const viewKey = String(calendar.view || viewLabel).toLowerCase();
+  const viewOptions = [
+    { key: "month", label: "Month" },
+    { key: "2-week", label: "2-week" },
+    { key: "week", label: "Week" },
+    { key: "day", label: "Day" }
+  ];
+  const baseSlots = ["8:00 AM", "10:00 AM", "12:00 PM", "1:00 PM", "3:00 PM", "5:00 PM"];
+  const timeSlots = ["All day", ...baseSlots];
+  const dayOrder = new Map(days.map((day, index) => [day, index]));
+  const timeOrder = new Map(baseSlots.map((slot, index) => [slot, index]));
+  const isAllDayEvent = (event) => !event.time || !timeOrder.has(event.time);
+  const agendaItems = [...events].sort((a, b) => {
+    const dayDelta = (dayOrder.get(a.day) ?? 99) - (dayOrder.get(b.day) ?? 99);
+    if (dayDelta !== 0) {
+      return dayDelta;
+    }
+    return (timeOrder.get(a.time) ?? 99) - (timeOrder.get(b.time) ?? 99);
+  });
+  const dayBadges = days
+    .map((day) => {
+      const count = events.filter((event) => event.day === day).length;
+      return `
+        <div class="calendar-pill">
+          <span>${day}</span>
+          <span class="calendar-pill__count">${count}</span>
+        </div>
+      `;
+    })
+    .join("");
+  const viewPills = viewOptions
+    .map((option) => {
+      const isActive =
+        viewKey.includes(option.key) ||
+        viewLabel.toLowerCase().includes(option.label.toLowerCase());
+      return `
+        <span class="calendar-pill${isActive ? " calendar-pill--active" : ""}">
+          ${option.label}
+        </span>
+      `;
+    })
+    .join("");
+  const gridHeader = days.map((day) => `<div class="calendar-grid__day">${day}</div>`).join("");
+  const gridRows = timeSlots
+    .map((slot) => {
+      const cells = days
+        .map((day) => {
+          const slotEvents = events.filter((event) => {
+            if (event.day !== day) {
+              return false;
+            }
+            if (slot === "All day") {
+              return isAllDayEvent(event);
+            }
+            return event.time === slot;
+          });
+          const eventCards = slotEvents
+            .map((event) => {
+              const calendarName = event.calendar || "Shared";
+              const ownerName = event.owner || "Unassigned";
+              return `
+              <div class="calendar-event">
+                <div class="calendar-event__title">${event.title}</div>
+                <div class="calendar-event__meta">${calendarName} · ${ownerName}</div>
+              </div>
+            `;
+            })
+            .join("");
+          const emptyState = `<span class="calendar-slot__empty">—</span>`;
+          return `
+            <div class="calendar-slot${slotEvents.length ? "" : " calendar-slot--empty"}">
+              ${slotEvents.length ? eventCards : emptyState}
+            </div>
+          `;
+        })
+        .join("");
+      return `
+        <div class="calendar-grid__time">${slot}</div>
+        ${cells}
+      `;
+    })
+    .join("");
+  const agendaList = agendaItems.length
+    ? agendaItems
+        .map((event) => {
+          const calendarName = event.calendar || "Shared";
+          const ownerName = event.owner || "Unassigned";
+          return `
+            <li>
+              <strong>${event.title}</strong>
+              <p>${calendarName} · ${ownerName}</p>
+              <span class="muted">${event.day} · ${event.time || "All day"}</span>
+            </li>
+          `;
+        })
+        .join("")
+    : `<li class="muted">No featured events scheduled yet.</li>`;
+
   return `
-    <h3>${calendar.label} Calendar View</h3>
-    <p class="muted">${calendar.summary}</p>
-    <div class="badges">
-      ${calendar.days.map((day) => `<span class="badge">${day}</span>`).join("")}
+    <div class="calendar-view">
+      <div class="calendar-view__header">
+        <div>
+          <h3>${viewLabel} Calendar View</h3>
+          <p class="muted">${summary}</p>
+        </div>
+        <div class="calendar-view__controls">
+          <div class="calendar-control">
+            <span class="calendar-control__label">View</span>
+            <div class="calendar-control__pills">${viewPills}</div>
+          </div>
+          <div class="calendar-control">
+            <span class="calendar-control__label">Focus days</span>
+            <div class="calendar-control__pills">${dayBadges}</div>
+          </div>
+        </div>
+      </div>
+      <div class="calendar-view__body">
+        <div class="calendar-grid">
+          <div class="calendar-grid__corner">Time</div>
+          ${gridHeader}
+          ${gridRows}
+        </div>
+        <div class="calendar-agenda">
+          <h4>Upcoming focus</h4>
+          <p class="muted">Quick list for the next featured moments.</p>
+          <ul class="list">${agendaList}</ul>
+        </div>
+      </div>
     </div>
-    <ul class="list">
-      ${calendar.featuredEvents
-        .map((event) => `<li>${event.title} · ${event.day} · ${event.time}</li>`)
-        .join("")}
-    </ul>
   `;
 }
 
