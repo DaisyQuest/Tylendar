@@ -14,6 +14,7 @@ const {
   renderCalendarView,
   renderDashboard,
   renderEventList,
+  renderEventManagementList,
   renderHighlights,
   renderMessageBoard,
   renderEmbedWidget,
@@ -28,11 +29,19 @@ const {
   renderProfile,
   renderProfileManagement,
   setFormFeedback,
+  buildEventPayload,
+  createEventId,
+  parseEventDateTime,
+  refreshEventList,
+  setEventListFeedback,
   updateAuthStatus,
   writeAuthState,
   getSelectedPermissions,
   getAccountHighlights,
   initCalendarControls,
+  initEventCreation,
+  initEventManagement,
+  initEventModal,
   initSharingControls,
   initProfileManagement,
   loadCalendarOverview,
@@ -646,6 +655,7 @@ describe("profile management controls", () => {
   beforeEach(() => {
     window.localStorage.removeItem("tylendar-auth");
     document.body.innerHTML = "";
+    global.fetch = undefined;
   });
 
   test("initProfileManagement does nothing without a form", async () => {
@@ -1250,6 +1260,518 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Share failed");
+
+    global.fetch.mockRestore();
+  });
+});
+
+describe("event creation and management", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem("tylendar-auth");
+    document.body.innerHTML = "";
+  });
+
+  test("createEventId returns a prefixed identifier", () => {
+    const id = createEventId();
+
+    expect(id).toMatch(/^evt-/);
+  });
+
+  test("parseEventDateTime returns null for missing or invalid values", () => {
+    expect(parseEventDateTime("", "10:00")).toBeNull();
+    expect(parseEventDateTime("not-a-date", "10:00")).toBeNull();
+  });
+
+  test("parseEventDateTime falls back to a default time", () => {
+    const result = parseEventDateTime("2024-02-20");
+
+    expect(result).toContain("2024-02-20");
+  });
+
+  test("buildEventPayload validates required fields", () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="" />
+        <input name="calendarId" value="" />
+        <input name="startsDate" value="" />
+        <input name="startsTime" value="" />
+        <input name="endsDate" value="" />
+        <input name="endsTime" value="" />
+      </form>
+    `;
+
+    const form = document.querySelector("[data-event-create]");
+    const result = buildEventPayload(form, null);
+
+    expect(result.errors).toContain("Sign in to create events.");
+    expect(result.errors).toContain("Calendar ID is required.");
+    expect(result.errors).toContain("Event title is required.");
+    expect(result.errors).toContain("Start and end times are required.");
+  });
+
+  test("buildEventPayload rejects end times before start times", () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="Planning" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="12:00" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="10:00" />
+      </form>
+    `;
+
+    const form = document.querySelector("[data-event-create]");
+    const result = buildEventPayload(form, { user: { id: "user-1" } });
+
+    expect(result.errors).toContain("End time must be after the start time.");
+  });
+
+  test("buildEventPayload assembles event payloads", () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="Planning" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="10:00" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="11:00" />
+        <textarea name="description">Notes</textarea>
+      </form>
+    `;
+
+    const form = document.querySelector("[data-event-create]");
+    const result = buildEventPayload(form, { user: { id: "user-1" } });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.payload.calendarIds).toEqual(["cal-1"]);
+    expect(result.payload.createdBy).toBe("user-1");
+    expect(result.payload.startsAt).toBeTruthy();
+    expect(result.payload.endsAt).toBeTruthy();
+  });
+
+  test("renderEventManagementList handles empty and populated events", () => {
+    const emptyHtml = renderEventManagementList([]);
+    const filledHtml = renderEventManagementList([
+      { id: "evt-1", title: "Sync", startsAt: "2024-01-01T10:00:00.000Z", description: "Discuss" }
+    ]);
+
+    expect(emptyHtml).toContain("No events found yet");
+    expect(filledHtml).toContain("Sync");
+    expect(filledHtml).toContain("Remove");
+  });
+
+  test("initEventModal opens and closes event modal", () => {
+    document.body.innerHTML = `
+      <button data-event-modal-open="event-modal"></button>
+      <div id="event-modal" data-event-modal aria-hidden="true">
+        <button data-event-modal-close></button>
+      </div>
+    `;
+
+    initEventModal();
+    document.querySelector("[data-event-modal-open]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    const modal = document.getElementById("event-modal");
+    expect(modal.classList.contains("event-modal--open")).toBe(true);
+
+    document.querySelector("[data-event-modal-close]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(modal.classList.contains("event-modal--open")).toBe(false);
+  });
+
+  test("initEventCreation ignores submit events from non-forms", () => {
+    initEventCreation();
+
+    expect(() => {
+      document.dispatchEvent(new Event("submit", { bubbles: true }));
+    }).not.toThrow();
+  });
+
+  test("initEventCreation ignores non-event forms", () => {
+    document.body.innerHTML = `
+      <form id="other-form">
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    initEventCreation();
+    document.getElementById("other-form")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    expect(document.querySelector("[data-form-feedback]").textContent).toBe("");
+  });
+
+  test("initEventCreation warns when not signed in", async () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    initEventCreation();
+    const form = document.querySelector("[data-event-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Sign in to create events");
+  });
+
+  test("initEventCreation reports validation errors", async () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="" />
+        <input name="calendarId" value="" />
+        <input name="startsDate" value="" />
+        <input name="startsTime" value="" />
+        <input name="endsDate" value="" />
+        <input name="endsTime" value="" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    initEventCreation();
+    const form = document.querySelector("[data-event-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID is required");
+  });
+
+  test("initEventCreation posts new events and closes the modal", async () => {
+    document.body.innerHTML = `
+      <div id="event-modal" data-event-modal class="event-modal--open" aria-hidden="false">
+        <form data-event-create data-event-modal-close-on-success>
+          <input name="title" value="Sync" />
+          <input name="calendarId" value="cal-1" />
+          <input name="startsDate" value="2024-02-20" />
+          <input name="startsTime" value="10:00" />
+          <input name="endsDate" value="2024-02-20" />
+          <input name="endsTime" value="11:00" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: "evt-1", title: "Sync" })
+      })
+    );
+
+    initEventCreation();
+    const form = document.querySelector("[data-event-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/events",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(document.getElementById("event-modal").classList.contains("event-modal--open")).toBe(false);
+
+    global.fetch.mockRestore();
+  });
+
+  test("initEventCreation refreshes event lists when configured", async () => {
+    document.body.innerHTML = `
+      <form data-event-create data-event-list-target="event-list">
+        <input name="title" value="Sync" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="10:00" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="11:00" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+      <div id="event-list"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn((url, options = {}) => {
+      if (options.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: "evt-1", title: "Sync" })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ events: [] })
+      });
+    });
+
+    initEventCreation();
+    document.querySelector("[data-event-create]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/events?calendarId=cal-1",
+      expect.any(Object)
+    );
+
+    global.fetch.mockRestore();
+  });
+
+  test("initEventCreation handles request failures", async () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="Sync" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="10:00" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="11:00" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Create failed" })
+      })
+    );
+
+    initEventCreation();
+    document.querySelector("[data-event-create]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-form-feedback]").textContent).toContain("Create failed");
+
+    global.fetch.mockRestore();
+  });
+
+  test("refreshEventList handles missing calendar identifiers", async () => {
+    document.body.innerHTML = `<div id="event-list"></div>`;
+    const container = document.getElementById("event-list");
+
+    await refreshEventList(null, "cal-1", "token");
+    await refreshEventList(container, "", "token");
+
+    expect(container.innerHTML).toContain("Event Management");
+    expect(container.dataset.calendarId).toBe("");
+  });
+
+  test("refreshEventList handles failed requests", async () => {
+    document.body.innerHTML = `<div id="event-list"></div>`;
+    const container = document.getElementById("event-list");
+
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false }));
+
+    await refreshEventList(container, "cal-1", "token");
+
+    expect(container.innerHTML).toContain("Unable to load events");
+
+    global.fetch.mockRestore();
+  });
+
+  test("setEventListFeedback updates list feedback messages", () => {
+    document.body.innerHTML = `
+      <div id="event-list">
+        <div class="form-feedback is-hidden" data-event-list-feedback></div>
+      </div>
+    `;
+
+    const container = document.getElementById("event-list");
+    expect(() => setEventListFeedback(null, "Ignored")).not.toThrow();
+    setEventListFeedback(container, "Updated", "success");
+
+    const feedback = container.querySelector("[data-event-list-feedback]");
+    expect(feedback.textContent).toContain("Updated");
+    expect(feedback.dataset.tone).toBe("success");
+    expect(feedback.classList.contains("is-hidden")).toBe(false);
+  });
+
+  test("initEventManagement loads events and deletes entries", async () => {
+    document.body.innerHTML = `
+      <form data-event-filter data-event-list-target="event-list">
+        <input name="calendarId" value="cal-1" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+      <div id="event-list" data-event-list></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn((url, options = {}) => {
+      if (options.method === "DELETE") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ events: [{ id: "evt-1", title: "Sync", startsAt: "2024-01-01T10:00:00.000Z" }] })
+      });
+    });
+
+    initEventManagement();
+    document.querySelector("[data-event-filter]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.getElementById("event-list").innerHTML).toContain("Sync");
+
+    document.querySelector("[data-event-delete]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/events/evt-1",
+      expect.objectContaining({ method: "DELETE" })
+    );
+
+    global.fetch.mockRestore();
+  });
+
+  test("initEventManagement handles missing auth and calendar values", async () => {
+    document.body.innerHTML = `
+      <form data-event-filter data-event-list-target="event-list">
+        <input name="calendarId" value="" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+      <div id="event-list"></div>
+    `;
+
+    initEventManagement();
+    document.querySelector("[data-event-filter]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-form-feedback]").textContent).toContain("Sign in to load events");
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    document.querySelector("[data-event-filter]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID is required");
+  });
+
+  test("initEventManagement ignores non-form submit events", () => {
+    initEventManagement();
+
+    expect(() => {
+      document.dispatchEvent(new Event("submit", { bubbles: true }));
+    }).not.toThrow();
+  });
+
+  test("initEventManagement ignores forms without event filters", () => {
+    document.body.innerHTML = `
+      <form id="other-filter">
+        <input name="calendarId" value="cal-1" />
+      </form>
+    `;
+
+    global.fetch = jest.fn();
+    initEventManagement();
+    document.getElementById("other-filter")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("initEventManagement skips delete when missing context", async () => {
+    document.body.innerHTML = `
+      <div data-event-list>
+        <button data-event-delete=""></button>
+      </div>
+    `;
+
+    global.fetch = jest.fn();
+    initEventManagement();
+    document.querySelector("[data-event-delete]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("initEventManagement skips delete when event id is missing", () => {
+    document.body.innerHTML = `
+      <div data-event-list>
+        <button data-event-delete=""></button>
+      </div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn();
+    initEventManagement();
+    document.querySelector("[data-event-delete]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("initEventManagement reports delete failures", async () => {
+    document.body.innerHTML = `
+      <div data-event-list data-calendar-id="cal-1">
+        <div class="form-feedback is-hidden" data-event-list-feedback></div>
+        <button data-event-delete="evt-1"></button>
+      </div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Delete failed" })
+      })
+    );
+
+    initEventManagement();
+    document.querySelector("[data-event-delete]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-event-list-feedback]").textContent).toContain("Unable to delete event");
 
     global.fetch.mockRestore();
   });

@@ -23,6 +23,7 @@ describe("home page layout", () => {
       "/profiles",
       "/dashboards",
       "/calendar",
+      "/events",
       "/access",
       "/messageboard",
       "/embed",

@@ -24,6 +24,7 @@ describe("server app", () => {
       ["/profiles", "Account profile"],
       ["/dashboards", "Dashboards"],
       ["/calendar", "Calendar workspace"],
+      ["/events", "Full-screen event creation"],
       ["/access", "Access management"],
       ["/messageboard", "Event message board"],
       ["/embed", "Embed widget"],
