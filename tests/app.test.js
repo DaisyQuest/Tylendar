@@ -10,12 +10,37 @@ describe("server app", () => {
     expect(response.text).toContain("social calendar space");
   });
 
-  test("serves home details page", async () => {
+  test("serves experience overview page", async () => {
     const app = createApp();
     const response = await request(app).get("/details");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain("User Management & Profile");
+    expect(response.text).toContain("Experience Overview");
+  });
+
+  test("serves focused experience pages", async () => {
+    const app = createApp();
+    const pages = [
+      ["/profiles", "Profile & Presence"],
+      ["/dashboards", "Dashboards"],
+      ["/calendar", "Calendar Focus"],
+      ["/access", "Manage Access"],
+      ["/messageboard", "MessageBoard"],
+      ["/embed", "Embed Widget"],
+      ["/sharing", "Sharing & Export"],
+      ["/audit", "Audit History"],
+      ["/roles", "Roles & Permissions"],
+      ["/resilience", "Fault Tolerance"],
+      ["/developer", "Developer Portal"],
+      ["/observability", "Observability"]
+    ];
+
+    for (const [route, text] of pages) {
+      // eslint-disable-next-line no-await-in-loop
+      const response = await request(app).get(route);
+      expect(response.status).toBe(200);
+      expect(response.text).toContain(text);
+    }
   });
 
   test("serves feature flags with overrides", async () => {
