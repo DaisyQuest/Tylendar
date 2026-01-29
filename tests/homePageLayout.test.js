@@ -13,6 +13,30 @@ describe("home page layout", () => {
     expect(html).toContain("directory-card");
   });
 
+  test("directory links point at the details route", () => {
+    const html = fs.readFileSync(
+      path.join(__dirname, "..", "client", "index.html"),
+      "utf8"
+    );
+
+    const links = [
+      "/details#user",
+      "/details#dashboard",
+      "/details#calendar",
+      "/details#access",
+      "/details#messageboard",
+      "/details#sharing",
+      "/details#audit",
+      "/details#roles",
+      "/details#developer",
+      "/details#observability"
+    ];
+
+    links.forEach((href) => {
+      expect(html).toContain(`href="${href}"`);
+    });
+  });
+
   test("styles define directory cards", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "..", "client", "styles.css"),
