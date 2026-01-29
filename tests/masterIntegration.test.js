@@ -29,7 +29,7 @@ const REQUIRED_DETAILS = [
   "operational metrics",
   "fault tolerance",
   "developer portal",
-  "observability",
+  "server status",
   "responsive layout",
 ];
 

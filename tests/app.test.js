@@ -32,7 +32,7 @@ describe("server app", () => {
       ["/roles", "Role management"],
       ["/resilience", "Fault tolerance"],
       ["/developer", "Developer portal"],
-      ["/observability", "Observability"]
+      ["/observability", "Server status"]
     ];
 
     for (const [route, text] of pages) {

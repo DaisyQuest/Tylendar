@@ -1,5 +1,6 @@
 const defaultSelectors = {
   profileCard: "profile-card",
+  profileManagement: "profile-management",
   homeHighlights: "home-highlights",
   userDashboard: "user-dashboard",
   orgDashboard: "org-dashboard",
@@ -179,6 +180,39 @@ function renderProfile(profile) {
     <ul class="list">
       ${details.map((item) => `<li>${item.label}: ${item.value}</li>`).join("")}
     </ul>
+  `;
+}
+
+function renderProfileManagement(profile) {
+  if (!profile) {
+    return renderEmptyState({
+      title: "Profile Management",
+      message: "Sign in to update your account details."
+    });
+  }
+
+  return `
+    <h3>Manage profile</h3>
+    <form class="form" data-profile-form>
+      <label class="form-field">
+        <span>Name</span>
+        <input type="text" name="name" value="${profile.name || ""}" required />
+      </label>
+      <label class="form-field">
+        <span>Email</span>
+        <input type="email" name="email" value="${profile.email || ""}" required />
+      </label>
+      <label class="form-field">
+        <span>Organization ID</span>
+        <input type="text" name="organizationId" value="${profile.organizationId || ""}" />
+      </label>
+      <label class="form-field">
+        <span>Role</span>
+        <input type="text" name="role" value="${profile.role || "member"}" />
+      </label>
+      <button class="primary" type="submit">Save profile</button>
+      <div class="form-feedback is-hidden" data-form-feedback></div>
+    </form>
   `;
 }
 
@@ -523,17 +557,29 @@ function renderDeveloperPortal(portal = { headline: "Developer Portal", descript
   `;
 }
 
-function renderObservability(overview = { uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [] }) {
+function renderObservability(
+  overview = { uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [], stats: {} }
+) {
   const latency = overview.latencyP95Ms ?? "N/A";
   const errorRate = overview.errorRate ?? "N/A";
   const highlights = overview.highlights || [];
+  const stats = overview.stats || {};
+  const statRows = [
+    { label: "Users", value: stats.users ?? "N/A" },
+    { label: "Events", value: stats.events ?? "N/A" },
+    { label: "Metrics uptime (seconds)", value: stats.uptimeSeconds ?? "N/A" }
+  ];
 
   return `
-    <h3>Observability Dashboard</h3>
+    <h3>Server Status</h3>
     <ul class="list">
       <li>Uptime (seconds): ${overview.uptimeSeconds ?? 0}</li>
       <li>P95 Latency (ms): ${latency}</li>
       <li>Error Rate: ${errorRate}</li>
+    </ul>
+    <h4>Service statistics</h4>
+    <ul class="list">
+      ${statRows.map((row) => `<li>${row.label}: ${row.value}</li>`).join("")}
     </ul>
     ${highlights.length
       ? `<div class="badges">
@@ -592,6 +638,87 @@ async function postJson(url, payload, { token } = {}) {
     throw new Error(message);
   }
   return data;
+}
+
+function getAccountHighlights(user) {
+  if (!user) {
+    return [];
+  }
+  return [
+    { title: "Email", description: user.email || "—" },
+    { title: "Organization", description: user.organizationId || "None" },
+    { title: "Role", description: user.role || "member" }
+  ];
+}
+
+function updateAccountSections(user) {
+  const profileCard = document.getElementById(defaultSelectors.profileCard);
+  if (profileCard) {
+    profileCard.innerHTML = renderProfile(user);
+  }
+  const highlights = document.getElementById(defaultSelectors.homeHighlights);
+  if (highlights) {
+    highlights.innerHTML = renderHighlights(getAccountHighlights(user));
+  }
+  const profileManagement = document.getElementById(defaultSelectors.profileManagement);
+  if (profileManagement) {
+    const form = profileManagement.querySelector("[data-profile-form]");
+    if (form) {
+      const setValue = (name, value) => {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (field) {
+          field.value = value;
+        }
+      };
+      setValue("name", user?.name || "");
+      setValue("email", user?.email || "");
+      setValue("organizationId", user?.organizationId || "");
+      setValue("role", user?.role || "member");
+    } else {
+      profileManagement.innerHTML = renderProfileManagement(user);
+    }
+  }
+}
+
+async function initProfileManagement() {
+  const form = document.querySelector("[data-profile-form]");
+  if (!form) {
+    return;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const authState = readAuthState();
+    const token = authState?.token;
+    if (!token) {
+      setFormFeedback(form, "Sign in to update your profile.", "error");
+      return;
+    }
+
+    const formData = new FormData(form);
+    const payload = {
+      name: String(formData.get("name") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
+      organizationId: String(formData.get("organizationId") || "").trim(),
+      role: String(formData.get("role") || "").trim()
+    };
+
+    if (!payload.name || !payload.email) {
+      setFormFeedback(form, "Name and email are required.", "error");
+      return;
+    }
+
+    try {
+      const response = await postJson("/api/auth/profile", payload, { token });
+      const updatedState = { token, user: response.user };
+      writeAuthState(updatedState);
+      updateAuthStatus(updatedState);
+      updateAccountSections(response.user);
+      setFormFeedback(form, "Profile updated successfully.", "success");
+    } catch (error) {
+      setFormFeedback(form, error.message, "error");
+    }
+  });
 }
 
 function initCalendarControls() {
@@ -818,13 +945,7 @@ async function init(selectorOverrides = {}) {
 
   const authState = readAuthState();
   const isSignedIn = Boolean(authState && authState.token);
-  const accountHighlights = authState?.user
-    ? [
-        { title: "Email", description: authState.user.email || "—" },
-        { title: "Organization", description: authState.user.organizationId || "None" },
-        { title: "Role", description: authState.user.role || "member" }
-      ]
-    : [];
+  const accountHighlights = getAccountHighlights(authState?.user);
 
   const signInMessage = "Sign in to view this section.";
 
@@ -846,6 +967,7 @@ async function init(selectorOverrides = {}) {
       : null;
 
     setSection(selectors.profileCard, renderProfile(authState.user));
+    setSection(selectors.profileManagement, renderProfileManagement(authState.user));
     setSection(selectors.homeHighlights, renderHighlights(accountHighlights));
     setSection(selectors.userDashboard, renderDashboard("User Dashboard", { items: [] }));
     setSection(selectors.orgDashboard, renderOrganizationStats(orgPayload));
@@ -862,10 +984,14 @@ async function init(selectorOverrides = {}) {
       selectors.developerPortal,
       renderDeveloperPortal({ headline: "Developer Portal", description: "No developer resources are available.", resources: [], status: "" })
     );
-    setSection(selectors.observability, renderObservability({ uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [] }));
+    setSection(
+      selectors.observability,
+      renderObservability({ uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [], stats: {} })
+    );
     setSection(selectors.operationalAlerts, renderOperationalAlerts({ alerts: [] }));
   } else {
     setSection(selectors.profileCard, renderProfile(null));
+    setSection(selectors.profileManagement, renderProfileManagement(null));
     setSection(selectors.homeHighlights, renderHighlights([]));
     setSection(selectors.userDashboard, renderEmptyState({ title: "User Dashboard", message: signInMessage }));
     setSection(selectors.orgDashboard, renderEmptyState({ title: "Organization Dashboard", message: signInMessage }));
@@ -879,10 +1005,41 @@ async function init(selectorOverrides = {}) {
     setSection(selectors.roleManagement, renderEmptyState({ title: "Role Management", message: signInMessage }));
     setSection(selectors.faultTolerance, renderEmptyState({ title: "Fault Tolerance", message: signInMessage }));
     setSection(selectors.developerPortal, renderEmptyState({ title: "Developer Portal", message: signInMessage }));
-    setSection(selectors.observability, renderEmptyState({ title: "Observability", message: signInMessage }));
-    setSection(selectors.operationalAlerts, renderEmptyState({ title: "Operational Alerts", message: signInMessage }));
+    setSection(
+      selectors.observability,
+      renderObservability({ uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [], stats: {} })
+    );
+    setSection(selectors.operationalAlerts, renderOperationalAlerts({ alerts: [] }));
   }
 
+  if (document.getElementById(selectors.observability) && typeof window !== "undefined" && typeof window.fetch === "function") {
+    try {
+      const [observability, metrics, alerts] = await Promise.all([
+        fetchJson("/api/monitoring/observability"),
+        fetchJson("/api/monitoring/metrics"),
+        fetchJson("/api/monitoring/alerts")
+      ]);
+      setSection(
+        selectors.observability,
+        renderObservability({
+          ...observability,
+          stats: {
+            users: metrics.users,
+            events: metrics.events,
+            uptimeSeconds: metrics.uptimeSeconds
+          }
+        })
+      );
+      setSection(selectors.operationalAlerts, renderOperationalAlerts(alerts));
+    } catch (error) {
+      setSection(
+        selectors.observability,
+        renderEmptyState({ title: "Server Status", message: "Unable to load server status metrics." })
+      );
+    }
+  }
+
+  await initProfileManagement();
   initCalendarControls();
   initSharingControls();
 
@@ -928,8 +1085,11 @@ if (typeof module !== "undefined") {
     renderOperationalAlerts,
     renderOrganizationStats,
     renderProfile,
+    renderProfileManagement,
     setFormFeedback,
     updateAuthStatus,
-    writeAuthState
+    writeAuthState,
+    getAccountHighlights,
+    initProfileManagement
   };
 }

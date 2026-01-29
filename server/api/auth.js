@@ -57,6 +57,28 @@ function validateRegistrationPayload({ name, email, password, organizationId }) 
   return errors;
 }
 
+function validateProfileUpdatePayload({ name, email, organizationId, role }) {
+  const errors = [];
+  const hasPayload = [name, email, organizationId, role].some((value) => value !== undefined);
+  if (!hasPayload) {
+    addError(errors, "profile", "profile update requires at least one field");
+    return errors;
+  }
+  if (name !== undefined) {
+    validateRequiredString(name, "name", errors);
+  }
+  if (email !== undefined) {
+    validateRequiredString(email, "email", errors);
+  }
+  if (organizationId !== undefined) {
+    validateOptionalString(organizationId, "organizationId", errors);
+  }
+  if (role !== undefined) {
+    validateOptionalString(role, "role", errors);
+  }
+  return errors;
+}
+
 function createAuthRouter({
   flags,
   sessionStore,
@@ -170,6 +192,57 @@ function createAuthRouter({
     return res.json({ status: "ok" });
   }));
 
+  router.post("/profile", requireAuth, asyncHandler(async (req, res) => {
+    const { name, email, organizationId, role } = req.body;
+    const errors = validateProfileUpdatePayload({ name, email, organizationId, role });
+    if (errors.length > 0) {
+      return res.status(400).json({ error: "Validation failed", details: errors });
+    }
+
+    const updates = {};
+    if (Object.prototype.hasOwnProperty.call(req.body, "name")) {
+      updates.name = name.trim();
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "email")) {
+      const normalizedEmail = normalizeEmail(email);
+      if (normalizedEmail !== req.user.email) {
+        const existing = await userRepository.list({ email: normalizedEmail });
+        if (existing.length > 0) {
+          return res.status(409).json({ error: "Email already registered" });
+        }
+      }
+      updates.email = normalizedEmail;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "organizationId")) {
+      const normalizedOrganizationId = normalizeOptionalId(organizationId);
+      if (organizationsRepository && normalizedOrganizationId) {
+        const org = await organizationsRepository.getById(normalizedOrganizationId);
+        if (!org) {
+          return res.status(404).json({ error: "Organization not found" });
+        }
+      }
+      updates.organizationId = normalizedOrganizationId;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "role")) {
+      updates.role = role.trim() || req.user.role;
+    }
+
+    const updated = await userRepository.update(req.user.id, updates);
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    await auditService.record({
+      action: "profile_update",
+      actorId: req.user.id,
+      targetId: req.user.id,
+      status: "success",
+      details: "User profile updated"
+    });
+
+    return res.json({ user: sanitizeUser(updated) });
+  }));
+
   router.get("/session", requireAuth, (req, res) => {
     res.json({ user: req.user, session: req.session });
   });
@@ -182,5 +255,6 @@ function createAuthRouter({
 }
 
 module.exports = {
-  createAuthRouter
+  createAuthRouter,
+  sanitizeUser
 };

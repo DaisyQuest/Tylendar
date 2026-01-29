@@ -26,12 +26,15 @@ const {
   renderOperationalAlerts,
   renderOrganizationStats,
   renderProfile,
+  renderProfileManagement,
   setFormFeedback,
   updateAuthStatus,
   writeAuthState,
   getSelectedPermissions,
+  getAccountHighlights,
   initCalendarControls,
-  initSharingControls
+  initSharingControls,
+  initProfileManagement
 } = require("../client/app");
 
 describe("client rendering", () => {
@@ -73,6 +76,38 @@ describe("client rendering", () => {
     expect(html).toContain("Email: —");
     expect(html).toContain("Organization: None");
     expect(html).toContain("Role: member");
+  });
+
+  test("renderProfileManagement shows empty state when missing", () => {
+    const html = renderProfileManagement(null);
+
+    expect(html).toContain("Sign in to update your account details");
+  });
+
+  test("renderProfileManagement renders an editable form", () => {
+    const html = renderProfileManagement({
+      name: "Profile User",
+      email: "profile@example.com",
+      organizationId: "org-9",
+      role: "admin"
+    });
+
+    expect(html).toContain("Manage profile");
+    expect(html).toContain('name="name"');
+    expect(html).toContain('value="Profile User"');
+    expect(html).toContain('value="profile@example.com"');
+    expect(html).toContain('value="org-9"');
+    expect(html).toContain('value="admin"');
+  });
+
+  test("getAccountHighlights builds defaults when values are missing", () => {
+    const highlights = getAccountHighlights({ email: "", organizationId: "", role: "" });
+
+    expect(highlights).toEqual([
+      { title: "Email", description: "—" },
+      { title: "Organization", description: "None" },
+      { title: "Role", description: "member" }
+    ]);
   });
 
   test("renderAuthStatus returns signed-out label", () => {
@@ -419,20 +454,29 @@ describe("client rendering", () => {
       uptimeSeconds: 42,
       latencyP95Ms: 100,
       errorRate: 0,
-      highlights: ["ok"]
+      highlights: ["ok"],
+      stats: {
+        users: 3,
+        events: 12,
+        uptimeSeconds: 55
+      }
     });
     const htmlNoHighlights = renderObservability({
       uptimeSeconds: 0,
       latencyP95Ms: null,
       errorRate: null,
-      highlights: []
+      highlights: [],
+      stats: {}
     });
     const htmlDefault = renderObservability();
     const htmlUndefinedHighlights = renderObservability({ uptimeSeconds: 5 });
 
     expect(htmlWithHighlights).toContain("42");
     expect(htmlWithHighlights).toContain("ok");
+    expect(htmlWithHighlights).toContain("Users: 3");
+    expect(htmlWithHighlights).toContain("Events: 12");
     expect(htmlNoHighlights).toContain("N/A");
+    expect(htmlNoHighlights).toContain("Service statistics");
     expect(htmlDefault).toContain("Uptime (seconds)");
     expect(htmlUndefinedHighlights).toContain("Uptime (seconds): 5");
   });
@@ -447,6 +491,197 @@ describe("client rendering", () => {
     expect(emptyHtml).toContain("No alerts reported");
     expect(defaultHtml).toContain("No alerts reported");
     expect(filledHtml).toContain("All good");
+  });
+});
+
+describe("profile management controls", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem("tylendar-auth");
+    document.body.innerHTML = "";
+  });
+
+  test("initProfileManagement does nothing without a form", async () => {
+    await expect(initProfileManagement()).resolves.toBeUndefined();
+  });
+
+  test("initProfileManagement requires authentication", async () => {
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Test" />
+          <input name="email" value="user@example.com" />
+          <input name="organizationId" value="" />
+          <input name="role" value="member" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    await initProfileManagement();
+
+    const form = document.querySelector("[data-profile-form]");
+    form.dispatchEvent(new Event("submit"));
+
+    const feedback = form.querySelector("[data-form-feedback]");
+    expect(feedback.textContent).toContain("Sign in to update your profile");
+  });
+
+  test("initProfileManagement validates required fields", async () => {
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { name: "Test", email: "user@example.com" } })
+    );
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="" />
+          <input name="email" value="" />
+          <input name="organizationId" value="" />
+          <input name="role" value="member" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    await initProfileManagement();
+
+    const form = document.querySelector("[data-profile-form]");
+    form.dispatchEvent(new Event("submit"));
+
+    const feedback = form.querySelector("[data-form-feedback]");
+    expect(feedback.textContent).toContain("Name and email are required");
+  });
+
+  test("initProfileManagement updates profile state on success", async () => {
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { name: "Test", email: "user@example.com" } })
+    );
+    document.body.innerHTML = `
+      <span data-auth-status></span>
+      <div id="profile-card"></div>
+      <div id="home-highlights"></div>
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Updated" />
+          <input name="email" value="updated@example.com" />
+          <input name="organizationId" value="org-2" />
+          <input name="role" value="admin" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: {
+              name: "Updated",
+              email: "updated@example.com",
+              organizationId: "org-2",
+              role: "admin"
+            }
+          })
+      })
+    );
+
+    await initProfileManagement();
+
+    const form = document.querySelector("[data-profile-form]");
+    form.dispatchEvent(new Event("submit"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const stored = JSON.parse(window.localStorage.getItem("tylendar-auth"));
+    expect(stored.user.name).toBe("Updated");
+    expect(document.getElementById("profile-card").innerHTML).toContain("Updated");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initProfileManagement surfaces update errors", async () => {
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { name: "Test", email: "user@example.com" } })
+    );
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Updated" />
+          <input name="email" value="updated@example.com" />
+          <input name="organizationId" value="" />
+          <input name="role" value="admin" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Profile update failed" })
+      })
+    );
+
+    await initProfileManagement();
+
+    const form = document.querySelector("[data-profile-form]");
+    form.dispatchEvent(new Event("submit"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const feedback = form.querySelector("[data-form-feedback]");
+    expect(feedback.textContent).toContain("Profile update failed");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initProfileManagement re-renders when form is missing", async () => {
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { name: "Test", email: "user@example.com" } })
+    );
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Updated" />
+          <input name="email" value="updated@example.com" />
+          <input name="organizationId" value="" />
+          <input name="role" value="admin" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    global.fetch = jest.fn(() => {
+      const container = document.getElementById("profile-management");
+      container.innerHTML = "";
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            user: {
+              name: "Updated",
+              email: "updated@example.com",
+              organizationId: "org-2",
+              role: "admin"
+            }
+          })
+      });
+    });
+
+    await initProfileManagement();
+
+    const form = document.querySelector("[data-profile-form]");
+    form.dispatchEvent(new Event("submit"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.getElementById("profile-management").innerHTML).toContain("Manage profile");
+
+    global.fetch.mockRestore();
   });
 });
 
@@ -575,6 +810,41 @@ describe("calendar and sharing controls", () => {
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Created calendar");
   });
 
+  test("initCalendarControls reports calendar creation failures", async () => {
+    document.body.innerHTML = `
+      <form data-calendar-create>
+        <input name="name" value="My Calendar" />
+        <input name="ownerId" value="user-1" />
+        <select name="ownerType">
+          <option value="user" selected>User</option>
+        </select>
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Create failed" })
+      })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-calendar-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Create failed");
+
+    global.fetch.mockRestore();
+  });
+
   test("initCalendarControls handles permission assignment errors", async () => {
     document.body.innerHTML = `
       <form data-permission-create>
@@ -600,6 +870,25 @@ describe("calendar and sharing controls", () => {
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID and User ID");
   });
 
+  test("initCalendarControls requires authentication for permissions", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <input name="calendarId" value="cal-1" />
+        <input name="userId" value="user-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    initCalendarControls();
+    const form = document.querySelector("[data-permission-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Sign in to assign permissions");
+  });
+
   test("initCalendarControls requires at least one permission", async () => {
     document.body.innerHTML = `
       <form data-permission-create>
@@ -622,6 +911,72 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Select at least one permission");
+  });
+
+  test("initCalendarControls assigns permissions on success", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <input name="calendarId" value="cal-1" />
+        <input name="userId" value="user-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" })
+      })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-permission-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Permissions assigned successfully");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initCalendarControls surfaces permission assignment failures", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <input name="calendarId" value="cal-1" />
+        <input name="userId" value="user-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Permission failed" })
+      })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-permission-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Permission failed");
+
+    global.fetch.mockRestore();
   });
 
   test("initSharingControls posts share link requests", async () => {
@@ -653,6 +1008,24 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Share link ready");
+  });
+
+  test("initSharingControls requires authentication", async () => {
+    document.body.innerHTML = `
+      <form data-share-link>
+        <input name="calendarId" value="cal-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    initSharingControls();
+    const form = document.querySelector("[data-share-link]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Sign in to generate a share link");
   });
 
   test("initSharingControls validates required fields", async () => {
@@ -699,6 +1072,38 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Select at least one permission");
+  });
+
+  test("initSharingControls surfaces share link errors", async () => {
+    document.body.innerHTML = `
+      <form data-share-link>
+        <input name="calendarId" value="cal-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Share failed" })
+      })
+    );
+
+    initSharingControls();
+    const form = document.querySelector("[data-share-link]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Share failed");
+
+    global.fetch.mockRestore();
   });
 });
 
@@ -792,6 +1197,7 @@ describe("client data loading", () => {
     window.localStorage.removeItem("tylendar-auth");
     document.body.innerHTML = `
       <div id="profile-card"></div>
+      <div id="profile-management"></div>
       <div id="home-highlights"></div>
       <div id="user-dashboard"></div>
       <div id="org-dashboard"></div>
@@ -813,11 +1219,13 @@ describe("client data loading", () => {
 
     expect(result.hydrated).toBe(true);
     expect(document.getElementById("calendar-view").innerHTML).toContain("Sign in to view this section");
+    expect(document.getElementById("profile-management").innerHTML).toContain("Sign in to update your account details");
   });
 
   test("init hydrates signed-in sections", async () => {
     document.body.innerHTML = `
       <div id="profile-card"></div>
+      <div id="profile-management"></div>
       <div id="home-highlights"></div>
       <div id="user-dashboard"></div>
       <div id="org-dashboard"></div>
@@ -848,6 +1256,7 @@ describe("client data loading", () => {
     expect(document.getElementById("profile-card").innerHTML).toContain("Test");
     expect(document.getElementById("home-highlights").innerHTML).toContain("user@example.com");
     expect(document.getElementById("org-dashboard").innerHTML).toContain("org-1");
+    expect(document.getElementById("profile-management").innerHTML).toContain("Manage profile");
 
     window.localStorage.removeItem("tylendar-auth");
   });
