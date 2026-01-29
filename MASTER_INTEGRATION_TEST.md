@@ -78,11 +78,11 @@ This document defines the **Master Integration Test (MIT)** that validates all m
     - Validate retries and fallback messaging across API and UI flows.
     - Confirm circuit breaker states reset after cooldown windows.
 15. **Home Page Experience**
-   - Validate the simplified hero banner and login/register actions on the home page.
+   - Validate the production landing header and login/register actions on the home page.
     - Verify the login/register modal opens from the home navigation and captures org/role inputs.
-    - Confirm the home page directory links route to dedicated focus pages (profiles, dashboards, calendar, access, MessageBoard, embed, sharing, audit, roles, resilience, developer, observability).
-    - Confirm the Experience Overview page summarizes all focus pages without anchor-based navigation.
-    - Validate each focus page renders the correct primary widgets (profile highlights, dashboards, calendar view + event list, access matrix, MessageBoard, embed widget, sharing options, audit history, role management, fault tolerance, developer portal, observability + alerts).
+    - Confirm the home page quick links route to dedicated focus pages (profiles, dashboards, calendar, access, MessageBoard, embed, sharing, audit, roles, resilience, developer, observability).
+    - Confirm the Experience Overview page lists the same focus pages with neutral, production-ready copy.
+    - Validate each focus page renders the correct primary widgets with empty-state messaging when no data exists (profile summary, dashboards, calendar view + event list, access matrix, MessageBoard, embed widget, sharing options, audit history, role management, fault tolerance, developer portal, observability + alerts).
     - Verify the focused page layout uses the page-content container for single-column readability.
 16. **Merge & Dependency Integrity**
     - Regenerate `package-lock.json` and confirm dependency resolution remains stable.

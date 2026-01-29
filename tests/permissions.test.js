@@ -1,21 +1,49 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
+const {
+  DEFAULT_PASSWORD,
+  createCalendar,
+  createCalendarPermission,
+  createOrganization,
+  createUser
+} = require("./helpers/fixtures");
 
 describe("permission enforcement", () => {
   test("denies and allows based on calendar permissions", async () => {
     const repositories = createRepositories({ useInMemory: true });
-    const seed = await seedDatabase(repositories);
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
+    await createUser(repositories, {
+      id: "user-2",
+      name: "Riley Patel",
+      email: "riley@example.com",
+      organizationId: "org-1",
+      role: "member"
+    });
+    await createCalendar(repositories, { id: "cal-1", ownerId: "org-1", ownerType: "organization" });
+    await createCalendarPermission(repositories, {
+      id: "perm-1",
+      calendarId: "cal-1",
+      userId: "user-1",
+      grantedBy: "user-1",
+      permissions: ["Add to Calendar"]
+    });
     const app = createApp({ repositories });
 
     const loginAdmin = await request(app).post("/api/auth/login").send({
       email: "avery@example.com",
-      password: DEFAULT_USER_PASSWORD
+      password: DEFAULT_PASSWORD
     });
     const loginMember = await request(app).post("/api/auth/login").send({
       email: "riley@example.com",
-      password: DEFAULT_USER_PASSWORD
+      password: DEFAULT_PASSWORD
     });
 
     const denied = await request(app)
@@ -24,8 +52,8 @@ describe("permission enforcement", () => {
       .send({
         id: "evt-2",
         title: "Denied",
-        calendarId: seed.calendars[0].id,
-        calendarIds: [seed.calendars[0].id],
+        calendarId: "cal-1",
+        calendarIds: ["cal-1"],
         startsAt: new Date().toISOString(),
         endsAt: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
         createdBy: "user-2"
@@ -39,8 +67,8 @@ describe("permission enforcement", () => {
       .send({
         id: "evt-3",
         title: "Allowed",
-        calendarId: seed.calendars[0].id,
-        calendarIds: [seed.calendars[0].id],
+        calendarId: "cal-1",
+        calendarIds: ["cal-1"],
         startsAt: new Date().toISOString(),
         endsAt: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
         createdBy: "user-1"
@@ -51,12 +79,19 @@ describe("permission enforcement", () => {
 
   test("denies when calendar is missing", async () => {
     const repositories = createRepositories({ useInMemory: true });
-    await seedDatabase(repositories);
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
     const app = createApp({ repositories });
 
     const login = await request(app).post("/api/auth/login").send({
       email: "avery@example.com",
-      password: DEFAULT_USER_PASSWORD
+      password: DEFAULT_PASSWORD
     });
     const denied = await request(app)
       .post("/api/events")

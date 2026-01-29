@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Calendar Focus</title>
+    <title>Tylendar | Calendar</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -33,24 +33,14 @@
       </nav>
       <section class="hero-banner">
         <div>
-          <p class="eyebrow">Calendar Focus</p>
-          <h1>Plan the week with full calendar context.</h1>
+          <p class="eyebrow">Calendar</p>
+          <h1>Calendar workspace</h1>
           <p class="subheading">
-            Dedicated calendar space keeps your schedule, agenda, and focus cues together.
+            Review schedules and events.
           </p>
           <div class="hero-actions">
             <a class="primary" href="/access">Manage access</a>
             <a class="secondary" href="/dashboards">Return to dashboards</a>
-          </div>
-        </div>
-        <div class="hero-card">
-          <div class="hero-card__title">Calendar Rhythm</div>
-          <div class="hero-card__metric">Month, week, day views</div>
-          <p class="hero-card__detail">Keep event lists and grid views in perfect sync.</p>
-          <div class="hero-card__badges">
-            <span>Agenda</span>
-            <span>Availability</span>
-            <span>Focus</span>
           </div>
         </div>
       </section>
@@ -60,7 +50,7 @@
       <section class="section">
         <div class="section-heading">
           <h2>Calendar & Event Views</h2>
-          <p>Month, 2-week, week, and day snapshots with list highlights.</p>
+          <p>Review schedules and upcoming events.</p>
         </div>
         <div class="grid two">
           <div class="card" id="calendar-view"></div>
@@ -72,12 +62,12 @@
     <footer class="footer">
       <div>
         <strong>Tylendar</strong>
-        <p>Social scheduling that feels warm, welcoming, and easy.</p>
+        <p>Production calendar system.</p>
       </div>
       <div class="footer-links">
-        <a href="#">Safety</a>
-        <a href="#">Community</a>
-        <a href="#">Help</a>
+        <a href="#">Status</a>
+        <a href="#">Privacy</a>
+        <a href="#">Support</a>
       </div>
     </footer>
 
@@ -121,8 +111,8 @@
             </label>
             <label class="auth-field">
               <span>Organization ID</span>
-              <input type="text" name="organizationId" placeholder="org-1 (optional)" />
-              <small>Optional. Leave blank or use <strong>org-1</strong> for the community space.</small>
+              <input type="text" name="organizationId" placeholder="Organization ID (optional)" />
+              <small>Optional. Leave blank if you are not joining an existing organization.</small>
             </label>
             <label class="auth-field">
               <span>Role</span>

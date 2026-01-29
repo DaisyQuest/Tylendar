@@ -6,15 +6,19 @@ function createSharingRouter({ sharingProvider, auditService }) {
   const router = express.Router();
 
   router.get("/preview", asyncHandler(async (req, res) => {
-    const calendarId = req.query.calendarId || "cal-1";
+    const calendarId = req.query.calendarId;
     const options = sharingProvider.getSharingOptions(calendarId);
     return res.json({ calendarId, options });
   }));
 
   router.post("/link", requireAuth, asyncHandler(async (req, res) => {
     const { calendarId } = req.body;
+    if (!calendarId) {
+      return res.status(400).json({ error: "calendarId is required" });
+    }
     const shareId = `share-${Date.now()}`;
-    const link = `https://tylendar.app/share/${calendarId || "cal-1"}`;
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const link = `${baseUrl}/share/${calendarId}`;
     await auditService.record({
       action: "share_link_create",
       actorId: req.user.id,
@@ -27,18 +31,22 @@ function createSharingRouter({ sharingProvider, auditService }) {
 
   router.post("/export", requireAuth, asyncHandler(async (req, res) => {
     const { calendarId, format } = req.body;
+    if (!calendarId) {
+      return res.status(400).json({ error: "calendarId is required" });
+    }
     await auditService.record({
       action: "calendar_export",
       actorId: req.user.id,
-      targetId: calendarId || "cal-1",
+      targetId: calendarId,
       status: "success",
       details: `Exported calendar in ${format || "ICS"} format`
     });
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
     return res.status(201).json({
-      calendarId: calendarId || "cal-1",
+      calendarId,
       format: format || "ICS",
       status: "ready",
-      downloadUrl: `https://tylendar.app/export/${calendarId || "cal-1"}.${(format || "ics").toLowerCase()}`
+      downloadUrl: `${baseUrl}/export/${calendarId}.${(format || "ics").toLowerCase()}`
     });
   }));
 

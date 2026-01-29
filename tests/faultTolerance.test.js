@@ -63,11 +63,42 @@ describe("fault tolerance utilities", () => {
     expect(breaker.getSnapshot().state).toBe("closed");
   });
 
+  test("circuit breaker reports state when openedAt is null", async () => {
+    const breaker = createCircuitBreaker({
+      failureThreshold: 1,
+      cooldownMs: 1000,
+      now: () => null
+    });
+
+    await expect(breaker.execute(async () => {
+      throw new Error("fail");
+    })).rejects.toThrow("fail");
+
+    await expect(breaker.execute(async () => "ok")).rejects.toThrow("Circuit breaker open");
+    expect(breaker.getState()).toBe("open");
+  });
+
+  test("circuit breaker uses default clock when not provided", async () => {
+    const breaker = createCircuitBreaker({ failureThreshold: 2, cooldownMs: 0 });
+
+    const result = await breaker.execute(async () => "ok");
+
+    expect(result).toBe("ok");
+    expect(breaker.getState()).toBe("closed");
+  });
+
   test("createGracefulError returns fallback details", () => {
     const fallback = createGracefulError(new Error("timeout"), "Service degraded");
 
     expect(fallback.message).toBe("Service degraded");
     expect(fallback.reason).toBe("timeout");
     expect(fallback.status).toBe("degraded");
+  });
+
+  test("createGracefulError uses default message and reason", () => {
+    const fallback = createGracefulError(null);
+
+    expect(fallback.message).toBe("Temporarily unavailable");
+    expect(fallback.reason).toBe("unknown");
   });
 });

@@ -1,34 +1,20 @@
-function createObservabilityService({ now = () => new Date().toISOString() } = {}) {
+function createObservabilityService({
+  now = () => new Date().toISOString(),
+  uptimeSeconds = () => Math.round(process.uptime())
+} = {}) {
   function getDashboard() {
     return {
-      uptime: "99.98%",
-      latencyP95: "210ms",
-      errorRate: "0.3%",
-      tracesSampled: "42k/day",
+      uptimeSeconds: uptimeSeconds(),
+      latencyP95Ms: null,
+      errorRate: null,
+      tracesSampled: 0,
       generatedAt: now(),
-      highlights: [
-        "Embed widget traffic +18%",
-        "Export throughput stable",
-        "Audit queries optimized"
-      ]
+      highlights: []
     };
   }
 
   function getAlerts() {
-    return [
-      {
-        id: "alert-1",
-        severity: "info",
-        message: "Share link delivery latency returned to baseline.",
-        status: "resolved"
-      },
-      {
-        id: "alert-2",
-        severity: "warning",
-        message: "Calendar sync retries spiked for EU region.",
-        status: "monitoring"
-      }
-    ];
+    return [];
   }
 
   return {

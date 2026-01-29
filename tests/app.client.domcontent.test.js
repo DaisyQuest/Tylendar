@@ -3,28 +3,36 @@
  */
 
 describe("DOMContentLoaded handler", () => {
-  test("logs errors when init fails", async () => {
+  test("hydrates sections on DOMContentLoaded", async () => {
     jest.resetModules();
     document.body.innerHTML = `
       <div id="profile-card"></div>
-      <div id="home-highlights"></div>
-      <div id="user-dashboard"></div>
-      <div id="org-dashboard"></div>
       <div id="calendar-view"></div>
-      <div id="event-list"></div>
-      <div id="access-matrix"></div>
-      <div id="message-board"></div>
-      <div id="embed-widget"></div>
-      <div id="sharing-options"></div>
-      <div id="audit-history"></div>
-      <div id="role-management"></div>
-      <div id="fault-tolerance"></div>
-      <div id="developer-portal"></div>
-      <div id="observability"></div>
-      <div id="operational-alerts"></div>
     `;
 
-    global.fetch = jest.fn(() => Promise.resolve({ ok: false }));
+    require("../client/app");
+    window.dispatchEvent(new Event("DOMContentLoaded"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.getElementById("profile-card").innerHTML).toContain("Sign in");
+  });
+
+  test("logs errors when init throws", async () => {
+    jest.resetModules();
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="auth-modal"></div>
+    `;
+
+    const originalGetElementById = document.getElementById.bind(document);
+    document.getElementById = (id) => {
+      if (id === "auth-modal") {
+        return originalGetElementById(id);
+      }
+      throw new Error("DOM failure");
+    };
+
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
     require("../client/app");
@@ -33,6 +41,8 @@ describe("DOMContentLoaded handler", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(errorSpy).toHaveBeenCalled();
+
     errorSpy.mockRestore();
+    document.getElementById = originalGetElementById;
   });
 });

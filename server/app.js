@@ -19,24 +19,9 @@ const { requireFeature } = require("./middleware/featureFlags");
 const { createPermissionGuard } = require("./middleware/permissions");
 const { createRepositories } = require("./repositories");
 const { createAuditService } = require("./services/auditService");
+const { createDeveloperPortalService } = require("./services/developerPortalService");
 const { createObservabilityService } = require("./services/observabilityService");
-const {
-  getAccessMatrix,
-  getAuditHistory,
-  getCalendarView,
-  getDeveloperPortal,
-  getEmbedWidget,
-  getEventListView,
-  getHomeHighlights,
-  getFaultToleranceSnapshots,
-  getMessageBoard,
-  getOrganizationDashboard,
-  getRoleManagement,
-  getSharingOptions,
-  getUserDashboard,
-  getUserProfile
-} = require("./data/sampleData");
-
+const { createSharingService } = require("./services/sharingService");
 function createApp({ featureOverrides, repositories, auditService, sessionStore, envOverrides } = {}) {
   const app = express();
   const env = getEnv(envOverrides);
@@ -44,6 +29,8 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   const repos = repositories || createRepositories({ envOverrides });
   const audit = auditService || createAuditService({ auditRepository: repos.audit });
   const observability = createObservabilityService();
+  const sharingService = createSharingService();
+  const developerPortalService = createDeveloperPortalService();
   const sessions = sessionStore || createSessionStore();
   const permissionGuard = createPermissionGuard({
     calendarPermissionsRepository: repos.calendarPermissions,
@@ -87,58 +74,6 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     res.json(flags);
   });
 
-  app.get("/api/home", (req, res) => {
-    res.json({
-      highlights: getHomeHighlights()
-    });
-  });
-
-  app.get("/api/profile/:userId", (req, res) => {
-    res.json(getUserProfile(req.params.userId));
-  });
-
-  app.get("/api/dashboard/user", (req, res) => {
-    res.json(getUserDashboard());
-  });
-
-  app.get("/api/dashboard/org", (req, res) => {
-    res.json(getOrganizationDashboard());
-  });
-
-  app.get("/api/calendar/view", (req, res) => {
-    res.json(getCalendarView(req.query.view));
-  });
-
-  app.get("/api/events/list", (req, res) => {
-    res.json(getEventListView(req.query.range));
-  });
-
-  app.get("/api/access", (req, res) => {
-    res.json({
-      entries: getAccessMatrix()
-    });
-  });
-
-  app.get("/api/events/:eventId/comments", (req, res) => {
-    res.json(getMessageBoard(req.params.eventId));
-  });
-
-  app.get("/api/audit/history-snapshot", requireFeature("auditHistory", flags), (req, res) => {
-    res.json({ entries: getAuditHistory() });
-  });
-
-  app.get("/api/embed/widget", requireFeature("embedWidget", flags), (req, res) => {
-    res.json(getEmbedWidget(req.query.calendarId));
-  });
-
-  app.get("/api/roles/summary", requireFeature("roleManagement", flags), (req, res) => {
-    res.json(getRoleManagement(req.query.orgId));
-  });
-
-  app.get("/api/fault-tolerance/snapshot", requireFeature("faultTolerance", flags), (req, res) => {
-    res.json({ snapshots: getFaultToleranceSnapshots() });
-  });
-
   app.use("/api/auth", requireFeature("auth", flags), createAuthRouter({
     flags,
     sessionStore: sessions,
@@ -169,7 +104,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     auditService: audit
   }));
   app.use("/api/sharing", requireFeature("socialSharing", flags), createSharingRouter({
-    sharingProvider: { getSharingOptions },
+    sharingProvider: sharingService,
     auditService: audit
   }));
   app.use("/api/roles", requireFeature("roleManagement", flags), createRolesRouter({
@@ -178,7 +113,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     auditService: audit
   }));
   app.use("/api/developer", requireFeature("developerPortal", flags), createDeveloperRouter({
-    developerProvider: { getDeveloperPortal }
+    developerProvider: developerPortalService
   }));
   app.use("/api/monitoring", requireFeature("monitoring", flags), createMonitoringRouter({
     repositories: repos,
