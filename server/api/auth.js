@@ -3,10 +3,18 @@ const crypto = require("crypto");
 const { hashPassword, verifyPassword } = require("../auth/passwords");
 const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
-const { addError, validateRequiredString } = require("../validation/validators");
+const { addError, validateOptionalString, validateRequiredString } = require("../validation/validators");
 
 function normalizeEmail(email) {
   return email.trim().toLowerCase();
+}
+
+function normalizeOptionalId(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function sanitizeUser(user) {
@@ -29,7 +37,7 @@ function validateRegistrationPayload({ name, email, password, organizationId }) 
   validateRequiredString(name, "name", errors);
   validateRequiredString(email, "email", errors);
   validateRequiredString(password, "password", errors);
-  validateRequiredString(organizationId, "organizationId", errors);
+  validateOptionalString(organizationId, "organizationId", errors);
   if (typeof password === "string" && password.trim().length > 0 && password.trim().length < 8) {
     addError(errors, "password", "password must be at least 8 characters");
   }
@@ -75,7 +83,8 @@ function createAuthRouter({
 
   router.post("/register", asyncHandler(async (req, res) => {
     const { name, email, password, organizationId, role } = req.body;
-    const errors = validateRegistrationPayload({ name, email, password, organizationId });
+    const normalizedOrganizationId = normalizeOptionalId(organizationId);
+    const errors = validateRegistrationPayload({ name, email, password, organizationId: normalizedOrganizationId });
     if (errors.length > 0) {
       return res.status(400).json({ error: "Validation failed", details: errors });
     }
@@ -84,8 +93,8 @@ function createAuthRouter({
     if (existing.length > 0) {
       return res.status(409).json({ error: "Email already registered" });
     }
-    if (organizationsRepository) {
-      const org = await organizationsRepository.getById(organizationId);
+    if (organizationsRepository && normalizedOrganizationId) {
+      const org = await organizationsRepository.getById(normalizedOrganizationId);
       if (!org) {
         return res.status(404).json({ error: "Organization not found" });
       }
@@ -96,7 +105,7 @@ function createAuthRouter({
       id: userId,
       name: name.trim(),
       email: normalizedEmail,
-      organizationId,
+      organizationId: normalizedOrganizationId,
       role,
       passwordHash: hashPassword(password)
     });

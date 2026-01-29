@@ -10,7 +10,7 @@ function validateUser(payload = {}) {
   validateRequiredString(payload.id, "id", errors);
   validateRequiredString(payload.name, "name", errors);
   validateRequiredString(payload.email, "email", errors);
-  validateRequiredString(payload.organizationId, "organizationId", errors);
+  validateOptionalString(payload.organizationId, "organizationId", errors);
   validateOptionalString(payload.role, "role", errors);
   validateOptionalString(payload.passwordHash, "passwordHash", errors);
 
