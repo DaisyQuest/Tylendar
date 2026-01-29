@@ -54,11 +54,34 @@ describe("API modules", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ id: "cal-2", name: "Launch", ownerId: "org-2", ownerType: "organization" });
     expect(calendarResponse.status).toBe(201);
+    expect(calendarResponse.body.id).toBeDefined();
 
     const calendarGet = await request(app)
       .get("/api/calendars/cal-2")
       .set("Authorization", `Bearer ${token}`);
     expect(calendarGet.body.name).toBe("Launch");
+
+    const calendarList = await request(app)
+      .get("/api/calendars?ownerId=org-2&ownerType=organization")
+      .set("Authorization", `Bearer ${token}`);
+    expect(calendarList.body.calendars.length).toBeGreaterThan(0);
+
+    const autoCalendar = await request(app)
+      .post("/api/calendars")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Auto Calendar" });
+    expect(autoCalendar.body.id).toContain("cal-");
+
+    const sharedCalendar = await request(app)
+      .post("/api/calendars")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Shared Calendar", sharedOwnerIds: ["user-1"] });
+    expect(sharedCalendar.status).toBe(201);
+
+    const sharedList = await request(app)
+      .get("/api/calendars?sharedOwnerId=user-1")
+      .set("Authorization", `Bearer ${token}`);
+    expect(sharedList.body.calendars.length).toBeGreaterThan(0);
 
     const missingCalendar = await request(app)
       .get("/api/calendars/missing")
@@ -77,6 +100,17 @@ describe("API modules", () => {
       });
     expect(permissionResponse.status).toBe(201);
 
+    const permissionDefault = await request(app)
+      .post("/api/permissions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        calendarId: "cal-2",
+        userId: "user-1",
+        permissions: ["View Calendar"]
+      });
+    expect(permissionDefault.body.id).toContain("perm-");
+    expect(permissionDefault.body.grantedBy).toBe("user-1");
+
     await request(app)
       .post("/api/permissions")
       .set("Authorization", `Bearer ${token}`)
@@ -91,7 +125,7 @@ describe("API modules", () => {
     const permissionList = await request(app)
       .get("/api/permissions?calendarId=cal-2")
       .set("Authorization", `Bearer ${token}`);
-    expect(permissionList.body.entries).toHaveLength(1);
+    expect(permissionList.body.entries.length).toBeGreaterThan(0);
 
     const permissionListAll = await request(app)
       .get("/api/permissions")
@@ -243,8 +277,15 @@ describe("API modules", () => {
     const shareLink = await request(app)
       .post("/api/sharing/link")
       .set("Authorization", `Bearer ${token}`)
-      .send({ calendarId: "cal-1" });
+      .send({ calendarId: "cal-1", permissions: ["View Calendar - Times Only"] });
     expect(shareLink.status).toBe(201);
+    expect(shareLink.body.link).toContain("token=");
+
+    const shareLinkDefaultPerms = await request(app)
+      .post("/api/sharing/link")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ calendarId: "cal-1" });
+    expect(shareLinkDefaultPerms.body.permissions).toEqual(["View Calendar"]);
 
     const shareLinkDefault = await request(app)
       .post("/api/sharing/link")
@@ -270,6 +311,19 @@ describe("API modules", () => {
       .send({});
     expect(exportDefault.status).toBe(400);
 
+    await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        id: "evt-embed",
+        title: "Public Event",
+        calendarId: "cal-1",
+        calendarIds: ["cal-1"],
+        startsAt: new Date().toISOString(),
+        endsAt: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+        createdBy: "user-1"
+      });
+
     const embedResponse = await request(app).get("/api/calendars/cal-1/embed");
     expect(embedResponse.body.calendar.id).toBe("cal-1");
 
@@ -281,6 +335,32 @@ describe("API modules", () => {
 
     const embedPrivate = await request(app).get("/api/calendars/cal-private/embed");
     expect(embedPrivate.status).toBe(403);
+
+    const embedPrivateBadToken = await request(app)
+      .get("/api/calendars/cal-private/embed?token=bad-token");
+    expect(embedPrivateBadToken.status).toBe(403);
+
+    const sharePrivate = await request(app)
+      .post("/api/sharing/link")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ calendarId: "cal-private", permissions: ["View Calendar"] });
+    const shareUrl = new URL(sharePrivate.body.link);
+    const shareToken = shareUrl.searchParams.get("token");
+
+    const embedPrivateViaToken = await request(app)
+      .get(`/api/calendars/cal-private/embed?token=${shareToken}`);
+    expect(embedPrivateViaToken.status).toBe(200);
+
+    const shareNoView = await request(app)
+      .post("/api/sharing/link")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ calendarId: "cal-private", permissions: ["Add to Calendar"] });
+    const noViewUrl = new URL(shareNoView.body.link);
+    const noViewToken = noViewUrl.searchParams.get("token");
+
+    const embedPrivateDenied = await request(app)
+      .get(`/api/calendars/cal-private/embed?token=${noViewToken}`);
+    expect(embedPrivateDenied.status).toBe(403);
 
     const embedPrivateAuthed = await request(app)
       .get("/api/calendars/cal-private/embed")

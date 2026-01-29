@@ -57,6 +57,79 @@
           <div class="card" id="event-list"></div>
         </div>
       </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2>Calendar Administration</h2>
+          <p>Create personal calendars and delegate access.</p>
+        </div>
+        <div class="grid two">
+          <div class="card">
+            <h3>Create a calendar</h3>
+            <form class="form" data-calendar-create>
+              <label class="form-field">
+                <span>Name</span>
+                <input type="text" name="name" required />
+              </label>
+              <label class="form-field">
+                <span>Owner Type</span>
+                <select name="ownerType">
+                  <option value="user">User</option>
+                  <option value="organization">Organization</option>
+                </select>
+              </label>
+              <label class="form-field">
+                <span>Owner ID (optional)</span>
+                <input type="text" name="ownerId" placeholder="Defaults to your user ID" />
+              </label>
+              <label class="form-checkbox">
+                <input type="checkbox" name="isPublic" />
+                <span>Make calendar public</span>
+              </label>
+              <button class="primary" type="submit">Create calendar</button>
+              <div class="form-feedback is-hidden" data-form-feedback></div>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Assign permissions</h3>
+            <form class="form" data-permission-create>
+              <label class="form-field">
+                <span>Calendar ID</span>
+                <input type="text" name="calendarId" required />
+              </label>
+              <label class="form-field">
+                <span>User ID</span>
+                <input type="text" name="userId" required />
+              </label>
+              <fieldset class="form-fieldset">
+                <legend>Permissions</legend>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="View Calendar" />
+                  <span>View Calendar</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="View Calendar - Times Only" />
+                  <span>View Calendar - Times Only</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="Add to Calendar" />
+                  <span>Add to Calendar</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="Comment on Calendar" />
+                  <span>Comment on Calendar</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="Manage Calendar" />
+                  <span>Manage Calendar</span>
+                </label>
+              </fieldset>
+              <button class="primary" type="submit">Assign permissions</button>
+              <div class="form-feedback is-hidden" data-form-feedback></div>
+            </form>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer class="footer">

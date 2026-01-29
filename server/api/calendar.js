@@ -1,10 +1,33 @@
 const express = require("express");
+const crypto = require("crypto");
 const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { PERMISSIONS } = require("../models/calendarPermissions");
 
-function createCalendarRouter({ calendarsRepository, eventsRepository, permissionGuard, auditService }) {
+function createCalendarRouter({
+  calendarsRepository,
+  eventsRepository,
+  calendarPermissionsRepository,
+  shareTokensRepository,
+  permissionGuard,
+  auditService
+}) {
   const router = express.Router();
+
+  router.get("/", requireAuth, asyncHandler(async (req, res) => {
+    const filter = {};
+    if (req.query.ownerId) {
+      filter.ownerId = req.query.ownerId;
+    }
+    if (req.query.ownerType) {
+      filter.ownerType = req.query.ownerType;
+    }
+    if (req.query.sharedOwnerId) {
+      filter.sharedOwnerIds = req.query.sharedOwnerId;
+    }
+    const calendars = await calendarsRepository.list(filter);
+    return res.json({ calendars });
+  }));
 
   router.get("/:calendarId", requireAuth, asyncHandler(async (req, res) => {
     const calendar = await calendarsRepository.getById(req.params.calendarId);
@@ -15,7 +38,26 @@ function createCalendarRouter({ calendarsRepository, eventsRepository, permissio
   }));
 
   router.post("/", requireAuth, asyncHandler(async (req, res) => {
-    const calendar = await calendarsRepository.create(req.body);
+    const payload = { ...req.body };
+    if (!payload.id) {
+      payload.id = `cal-${crypto.randomBytes(8).toString("hex")}`;
+    }
+    if (!payload.ownerId) {
+      payload.ownerId = req.user.id;
+    }
+    if (!payload.ownerType) {
+      payload.ownerType = "user";
+    }
+    const calendar = await calendarsRepository.create(payload);
+    if (calendarPermissionsRepository) {
+      await calendarPermissionsRepository.create({
+        id: `perm-${crypto.randomBytes(8).toString("hex")}`,
+        calendarId: calendar.id,
+        userId: req.user.id,
+        grantedBy: req.user.id,
+        permissions: PERMISSIONS
+      });
+    }
     await auditService.record({
       action: "calendar_create",
       actorId: req.user.id,
@@ -51,8 +93,22 @@ function createCalendarRouter({ calendarsRepository, eventsRepository, permissio
     if (!calendar) {
       return res.status(404).json({ error: "Calendar not found" });
     }
+    let sharePermissions = null;
     if (!calendar.isPublic && !req.user) {
-      return res.status(403).json({ error: "Calendar is private" });
+      const token = req.query.token;
+      if (!token || !shareTokensRepository) {
+        return res.status(403).json({ error: "Calendar is private" });
+      }
+      const matches = await shareTokensRepository.list({ calendarId: calendar.id, token });
+      const entry = matches[0];
+      if (!entry) {
+        return res.status(403).json({ error: "Calendar is private" });
+      }
+      sharePermissions = entry.permissions || [];
+      const allowed = sharePermissions.includes(PERMISSIONS[0]) || sharePermissions.includes(PERMISSIONS[1]);
+      if (!allowed) {
+        return res.status(403).json({ error: "Share link does not allow viewing" });
+      }
     }
 
     const allEvents = await eventsRepository.list();
@@ -67,6 +123,7 @@ function createCalendarRouter({ calendarsRepository, eventsRepository, permissio
         isPublic: calendar.isPublic
       },
       events,
+      permissions: sharePermissions || undefined,
       embed: {
         theme: "default",
         refreshSeconds: 60,

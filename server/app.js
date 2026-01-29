@@ -79,6 +79,8 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     sessionStore: sessions,
     userRepository: repos.users,
     organizationsRepository: repos.organizations,
+    calendarsRepository: repos.calendars,
+    calendarPermissionsRepository: repos.calendarPermissions,
     auditService: audit
   }));
   app.use("/api/org", requireFeature("org", flags), createOrgRouter({
@@ -88,6 +90,8 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   app.use("/api/calendars", requireFeature("calendar", flags), createCalendarRouter({
     calendarsRepository: repos.calendars,
     eventsRepository: repos.events,
+    calendarPermissionsRepository: repos.calendarPermissions,
+    shareTokensRepository: repos.shareTokens,
     permissionGuard,
     auditService: audit
   }));
@@ -105,6 +109,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   }));
   app.use("/api/sharing", requireFeature("socialSharing", flags), createSharingRouter({
     sharingProvider: sharingService,
+    shareTokensRepository: repos.shareTokens,
     auditService: audit
   }));
   app.use("/api/roles", requireFeature("roleManagement", flags), createRolesRouter({

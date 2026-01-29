@@ -1,3 +1,5 @@
+const { PERMISSIONS } = require("../models/calendarPermissions");
+
 function createSharingService() {
   function getSharingOptions(calendarId) {
     if (!calendarId) {
@@ -7,7 +9,8 @@ function createSharingService() {
     return [
       {
         channel: "Share link",
-        description: "Generate a secure share link for this calendar."
+        description: "Generate a secure share link for this calendar.",
+        permissions: PERMISSIONS
       },
       {
         channel: "Export",

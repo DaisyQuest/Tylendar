@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { hashPassword, verifyPassword } = require("../auth/passwords");
 const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
+const { PERMISSIONS } = require("../models/calendarPermissions");
 const { addError, validateOptionalString, validateRequiredString } = require("../validation/validators");
 
 function normalizeEmail(email) {
@@ -49,6 +50,8 @@ function createAuthRouter({
   sessionStore,
   userRepository,
   organizationsRepository,
+  calendarsRepository,
+  calendarPermissionsRepository,
   auditService
 }) {
   const router = express.Router();
@@ -109,6 +112,24 @@ function createAuthRouter({
       role,
       passwordHash: hashPassword(password)
     });
+
+    if (calendarsRepository && calendarPermissionsRepository) {
+      const calendarId = `cal-${crypto.randomBytes(8).toString("hex")}`;
+      const calendar = await calendarsRepository.create({
+        id: calendarId,
+        name: `${user.name}'s Calendar`,
+        ownerId: user.id,
+        ownerType: "user",
+        isPublic: false
+      });
+      await calendarPermissionsRepository.create({
+        id: `perm-${crypto.randomBytes(8).toString("hex")}`,
+        calendarId: calendar.id,
+        userId: user.id,
+        grantedBy: user.id,
+        permissions: PERMISSIONS
+      });
+    }
 
     const session = sessionStore.createSession({ userId: user.id });
     await auditService.record({

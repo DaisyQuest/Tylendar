@@ -26,8 +26,12 @@ const {
   renderOperationalAlerts,
   renderOrganizationStats,
   renderProfile,
+  setFormFeedback,
   updateAuthStatus,
-  writeAuthState
+  writeAuthState,
+  getSelectedPermissions,
+  initCalendarControls,
+  initSharingControls
 } = require("../client/app");
 
 describe("client rendering", () => {
@@ -308,6 +312,11 @@ describe("client rendering", () => {
         { channel: "Share link", description: "Share", link: "https://example.com" }
       ]
     });
+    const permissionHtml = renderSharingOptions({
+      options: [
+        { channel: "Share link", description: "Share", permissions: ["View Calendar"] }
+      ]
+    });
     const noExtrasHtml = renderSharingOptions({
       options: [
         { channel: "Internal", description: "Internal use only" }
@@ -318,6 +327,7 @@ describe("client rendering", () => {
     expect(defaultHtml).toContain("No sharing options configured");
     expect(filledHtml).toContain("Formats: ICS, CSV");
     expect(linkHtml).toContain("https://example.com");
+    expect(permissionHtml).toContain("Permissions: View Calendar");
     expect(noExtrasHtml).toContain("Internal use only");
   });
 
@@ -440,6 +450,258 @@ describe("client rendering", () => {
   });
 });
 
+describe("calendar and sharing controls", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem("tylendar-auth");
+    document.body.innerHTML = "";
+  });
+
+  test("setFormFeedback updates message and tone", () => {
+    document.body.innerHTML = `
+      <form id="test-form">
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+    const form = document.getElementById("test-form");
+
+    setFormFeedback(form, "Saved", "success");
+
+    const feedback = form.querySelector("[data-form-feedback]");
+    expect(feedback.textContent).toContain("Saved");
+    expect(feedback.dataset.tone).toBe("success");
+    expect(feedback.classList.contains("is-hidden")).toBe(false);
+  });
+
+  test("setFormFeedback is resilient without form or feedback", () => {
+    expect(() => setFormFeedback(null, "Missing")).not.toThrow();
+
+    document.body.innerHTML = `<form id="missing-feedback"></form>`;
+    const form = document.getElementById("missing-feedback");
+    expect(() => setFormFeedback(form, "Missing")).not.toThrow();
+  });
+
+  test("getSelectedPermissions returns checked values", () => {
+    document.body.innerHTML = `
+      <form id="perm-form">
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <input type="checkbox" name="permissions" value="Manage Calendar" />
+      </form>
+    `;
+    const form = document.getElementById("perm-form");
+    expect(getSelectedPermissions(form)).toEqual(["View Calendar"]);
+  });
+
+  test("getSelectedPermissions returns empty array when form is missing", () => {
+    expect(getSelectedPermissions()).toEqual([]);
+  });
+
+  test("initCalendarControls warns when not signed in", async () => {
+    document.body.innerHTML = `
+      <form data-calendar-create>
+        <input name="name" value="My Calendar" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    initCalendarControls();
+    const form = document.querySelector("[data-calendar-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Sign in to create a calendar");
+  });
+
+  test("initCalendarControls validates missing calendar name", async () => {
+    document.body.innerHTML = `
+      <form data-calendar-create>
+        <input name="name" value="" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-calendar-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Calendar name is required");
+  });
+
+  test("initCalendarControls handles calendar creation", async () => {
+    document.body.innerHTML = `
+      <form data-calendar-create>
+        <input name="name" value="My Calendar" />
+        <input name="ownerId" value="" />
+        <select name="ownerType">
+          <option value="user" selected>User</option>
+        </select>
+        <input type="checkbox" name="isPublic" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+        <button type="submit">Create</button>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: "cal-1", name: "My Calendar" })
+      })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-calendar-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/calendars",
+      expect.objectContaining({
+        method: "POST"
+      })
+    );
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Created calendar");
+  });
+
+  test("initCalendarControls handles permission assignment errors", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <input name="calendarId" value="" />
+        <input name="userId" value="" />
+        <input type="checkbox" name="permissions" value="View Calendar" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+        <button type="submit">Assign</button>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-permission-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID and User ID");
+  });
+
+  test("initCalendarControls requires at least one permission", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <input name="calendarId" value="cal-1" />
+        <input name="userId" value="user-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-permission-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Select at least one permission");
+  });
+
+  test("initSharingControls posts share link requests", async () => {
+    document.body.innerHTML = `
+      <form data-share-link>
+        <input name="calendarId" value="cal-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+        <button type="submit">Share</button>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ link: "https://example.com?token=abc" })
+      })
+    );
+
+    initSharingControls();
+    const form = document.querySelector("[data-share-link]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Share link ready");
+  });
+
+  test("initSharingControls validates required fields", async () => {
+    document.body.innerHTML = `
+      <form data-share-link>
+        <input name="calendarId" value="" />
+        <input type="checkbox" name="permissions" value="View Calendar" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    initSharingControls();
+    const form = document.querySelector("[data-share-link]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID is required");
+  });
+
+  test("initSharingControls requires permissions selection", async () => {
+    document.body.innerHTML = `
+      <form data-share-link>
+        <input name="calendarId" value="cal-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    initSharingControls();
+    const form = document.querySelector("[data-share-link]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Select at least one permission");
+  });
+});
+
 describe("client data loading", () => {
   test("fetchJson throws on error response", async () => {
     global.fetch = jest.fn(() =>
@@ -527,6 +789,7 @@ describe("client data loading", () => {
   });
 
   test("init hydrates signed-out sections", async () => {
+    window.localStorage.removeItem("tylendar-auth");
     document.body.innerHTML = `
       <div id="profile-card"></div>
       <div id="home-highlights"></div>

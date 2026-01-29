@@ -14,5 +14,6 @@ describe("sharing service", () => {
 
     expect(options).toHaveLength(2);
     expect(options[1]).toHaveProperty("formats");
+    expect(options[0]).toHaveProperty("permissions");
   });
 });

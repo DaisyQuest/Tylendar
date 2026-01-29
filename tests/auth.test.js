@@ -43,6 +43,13 @@ describe("auth API", () => {
     expect(registerNoOrg.status).toBe(201);
     expect(registerNoOrg.body.user.organizationId).toBeUndefined();
 
+    const soloCalendars = await repositories.calendars.list({ ownerId: registerNoOrg.body.user.id });
+    expect(soloCalendars).toHaveLength(1);
+    expect(soloCalendars[0].isPublic).toBe(false);
+    const soloPermissions = await repositories.calendarPermissions.list({ calendarId: soloCalendars[0].id });
+    expect(soloPermissions[0].userId).toBe(registerNoOrg.body.user.id);
+    expect(soloPermissions[0].permissions.length).toBeGreaterThan(0);
+
     const register = await request(app).post("/api/auth/register").send({
       name: "New User",
       email: "newuser@example.com",
