@@ -14,6 +14,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 1. **User Onboarding & Profile**
    - Register a user with email + password, authenticate session, update profile, verify permissions.
    - Validate login rejects invalid credentials and accepts password-based sign-ins.
+   - Confirm login/registration responses set a session cookie and API requests can authenticate via the cookie.
    - Confirm Login/Register modal submits to auth APIs, surfaces inline feedback, and updates signed-in status.
    - Confirm registration succeeds without providing an organization ID and persists an optional org when supplied.
    - Verify new users receive a private default calendar and self-only permissions by default.
