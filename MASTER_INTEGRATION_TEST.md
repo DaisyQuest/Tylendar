@@ -14,6 +14,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 1. **User Onboarding & Profile**
    - Register a user with email + password, authenticate session, update profile, verify permissions.
    - Validate login rejects invalid credentials and accepts password-based sign-ins.
+   - Confirm Login/Register modal submits to auth APIs, surfaces inline feedback, and updates signed-in status.
    - Validate User Management + Profile UI sections render notifications and activity feed.
    - Confirm feature flags toggle profile modules without breaking navigation.
    - Verify profile edits persist across session refresh and re-login.
@@ -74,7 +75,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
     - Validate retries and fallback messaging across API and UI flows.
     - Confirm circuit breaker states reset after cooldown windows.
 15. **Home Page Experience**
-    - Validate the simplified hero banner and login/register actions on the home page.
+   - Validate the simplified hero banner and login/register actions on the home page.
+    - Verify the login/register modal opens from the home navigation and captures org/role inputs.
     - Confirm the Home Details page renders highlights, dashboards, calendar previews, access, and MessageBoard sections.
     - Verify the Home Details feature preview layout uses the two-column grid at desktop widths to reduce vertical scrolling.
 16. **Merge & Dependency Integrity**

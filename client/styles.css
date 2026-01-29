@@ -64,6 +64,7 @@ a {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .primary,
@@ -98,6 +99,27 @@ a {
 .secondary:hover,
 .ghost:hover {
   transform: translateY(-1px);
+}
+
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.auth-status__text {
+  white-space: nowrap;
+}
+
+.auth-logout {
+  padding: 0.4rem 0.85rem;
+}
+
+.is-hidden {
+  display: none;
 }
 
 .hero-banner {
@@ -517,6 +539,119 @@ a {
 .footer-links {
   display: flex;
   gap: 1.2rem;
+}
+
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.auth-modal--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.auth-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 36, 51, 0.4);
+}
+
+.auth-modal__card {
+  position: relative;
+  width: min(90vw, 460px);
+  background: var(--card);
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  display: grid;
+  gap: 1.5rem;
+}
+
+.auth-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1.1rem;
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.auth-modal__tabs {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #f8f4ff;
+  color: #4c3ca8;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-tab--active {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.auth-panel {
+  display: none;
+  gap: 1rem;
+}
+
+.auth-panel--active {
+  display: grid;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.auth-field input {
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.auth-field small {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.auth-feedback {
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  background: #f7f0ff;
+  color: #4c3ca8;
+  font-weight: 600;
+}
+
+.auth-feedback[data-tone="error"] {
+  background: #ffe7f2;
+  color: #8c2f59;
+}
+
+.auth-feedback[data-tone="success"] {
+  background: #e9f7ef;
+  color: #2f6e4f;
 }
 
 @media (max-width: 720px) {
