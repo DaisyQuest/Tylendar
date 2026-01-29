@@ -1,24 +1,25 @@
 const fs = require("fs");
 const path = require("path");
 
-describe("feature preview layout", () => {
-  test("details page uses the feature preview grid container", () => {
+describe("experience overview layout", () => {
+  test("details page uses the page content container", () => {
     const html = fs.readFileSync(
       path.join(__dirname, "..", "client", "details.html"),
       "utf8"
     );
 
-    expect(html).toContain('class="main feature-preview"');
+    expect(html).toContain('class="page-content"');
+    expect(html).toContain('class="directory-grid"');
   });
 
-  test("styles define the feature preview grid rules", () => {
+  test("styles define the page content rules", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "..", "client", "styles.css"),
       "utf8"
     );
 
-    expect(css).toMatch(/\.main\.feature-preview\s*\{/);
-    expect(css).toMatch(/grid-template-columns:\s*repeat\(2/);
-    expect(css).toMatch(/@media \(max-width: 1024px\)/);
+    expect(css).toMatch(/\.page-content\s*\{/);
+    expect(css).toMatch(/\.page-content\s+\.section\s*\{/);
+    expect(css).toMatch(/@media \(max-width: 720px\)/);
   });
 });

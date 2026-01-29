@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Social Calendar Space</title>
+    <title>Tylendar | MessageBoard</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <header class="hero">
+    <header class="hero hero--page">
       <nav class="nav">
         <a class="logo" href="/">Tylendar</a>
         <div class="nav-links nav-links--compact">
+          <a href="/">Home</a>
           <a href="/profiles">Profiles</a>
           <a href="/dashboards">Dashboards</a>
           <a href="/calendar">Calendar</a>
@@ -30,90 +31,52 @@
           <button class="primary" data-auth-trigger="register">Register</button>
         </div>
       </nav>
-      <section class="hero-banner" id="home">
+      <section class="hero-banner">
         <div>
-          <p class="eyebrow">Welcome to your social calendar space</p>
-          <h1>Plan together, celebrate together, and keep every moment connected.</h1>
+          <p class="eyebrow">MessageBoard</p>
+          <h1>Keep event conversations warm and organized.</h1>
           <p class="subheading">
-            Tylendar keeps your shared plans in one calm, welcoming place. Explore each
-            experience with dedicated pages designed for deep focus.
+            Dedicated MessageBoard focus keeps updates, replies, and context together.
           </p>
           <div class="hero-actions">
-            <a class="primary" href="/calendar">Open the calendar view</a>
-            <a class="secondary" href="/profiles">Visit your profile space</a>
+            <a class="primary" href="/calendar">Return to the calendar</a>
+            <a class="secondary" href="/sharing">Share updates</a>
           </div>
         </div>
         <div class="hero-card">
-          <div class="hero-card__title">Today on Tylendar</div>
-          <div class="hero-card__metric">6 focus-ready experiences</div>
-          <p class="hero-card__detail">Each view has its own page, layout, and guidance.</p>
+          <div class="hero-card__title">Conversation Flow</div>
+          <div class="hero-card__metric">Threaded event updates</div>
+          <p class="hero-card__detail">Follow every detail without losing the schedule.</p>
           <div class="hero-card__badges">
-            <span>Focused</span>
-            <span>Accessible</span>
-            <span>Calm</span>
+            <span>Replies</span>
+            <span>Mentions</span>
+            <span>Context</span>
           </div>
         </div>
       </section>
     </header>
 
-    <main class="home-directory">
+    <main class="page-content">
       <section class="section">
         <div class="section-heading">
-          <h2>Your feature directory</h2>
-          <p>Jump straight into a dedicated page built for each experience.</p>
+          <h2>Event MessageBoard</h2>
+          <p>Chat, cheer, and keep conversations next to the moments.</p>
         </div>
-        <div class="directory-grid">
-          <a class="directory-card" href="/profiles">
-            <div class="directory-card__title">Profile & Presence</div>
-            <div class="directory-card__meta">Keep your status, focus, and notifications in sync.</div>
-          </a>
-          <a class="directory-card" href="/dashboards">
-            <div class="directory-card__title">Dashboards</div>
-            <div class="directory-card__meta">Quick pulses for personal and organization health.</div>
-          </a>
-          <a class="directory-card" href="/calendar">
-            <div class="directory-card__title">Calendar Views</div>
-            <div class="directory-card__meta">Month, week, and day perspectives with focus cues.</div>
-          </a>
-          <a class="directory-card" href="/access">
-            <div class="directory-card__title">Manage Access</div>
-            <div class="directory-card__meta">Audit and update permissions in one clear table.</div>
-          </a>
-          <a class="directory-card" href="/messageboard">
-            <div class="directory-card__title">MessageBoard</div>
-            <div class="directory-card__meta">Keep event conversations warm and contextual.</div>
-          </a>
-          <a class="directory-card" href="/embed">
-            <div class="directory-card__title">Embed Widget</div>
-            <div class="directory-card__meta">Portable calendar previews for any workspace.</div>
-          </a>
-          <a class="directory-card" href="/sharing">
-            <div class="directory-card__title">Sharing & Export</div>
-            <div class="directory-card__meta">Send links or export schedules with perfect time zones.</div>
-          </a>
-          <a class="directory-card" href="/audit">
-            <div class="directory-card__title">Audit History</div>
-            <div class="directory-card__meta">Trace changes with a beautiful, readable timeline.</div>
-          </a>
-          <a class="directory-card" href="/roles">
-            <div class="directory-card__title">Roles & Permissions</div>
-            <div class="directory-card__meta">Fine-tune team access and ownership.</div>
-          </a>
-          <a class="directory-card" href="/resilience">
-            <div class="directory-card__title">Fault Tolerance</div>
-            <div class="directory-card__meta">Resilient patterns that keep schedules running.</div>
-          </a>
-          <a class="directory-card" href="/developer">
-            <div class="directory-card__title">Developer Portal</div>
-            <div class="directory-card__meta">API specs, widgets, and integration guidance.</div>
-          </a>
-          <a class="directory-card" href="/observability">
-            <div class="directory-card__title">Observability</div>
-            <div class="directory-card__meta">Stay ahead of uptime, latency, and alerting.</div>
-          </a>
-        </div>
+        <div class="card" id="message-board"></div>
       </section>
     </main>
+
+    <footer class="footer">
+      <div>
+        <strong>Tylendar</strong>
+        <p>Social scheduling that feels warm, welcoming, and easy.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#">Safety</a>
+        <a href="#">Community</a>
+        <a href="#">Help</a>
+      </div>
+    </footer>
 
     <div class="auth-modal" id="auth-modal" aria-hidden="true">
       <div class="auth-modal__backdrop" data-auth-close></div>

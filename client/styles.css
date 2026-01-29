@@ -34,6 +34,10 @@ a {
   padding: 2rem 3rem 3.5rem;
 }
 
+.hero--page {
+  padding-bottom: 2.5rem;
+}
+
 .nav {
   display: flex;
   align-items: center;
@@ -54,6 +58,10 @@ a {
   font-weight: 500;
   color: var(--muted);
   flex-wrap: wrap;
+}
+
+.nav-links--compact {
+  font-size: 0.9rem;
 }
 
 .nav-links a:hover {
@@ -200,6 +208,18 @@ a {
   gap: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.page-content {
+  display: grid;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 3rem 3rem;
+}
+
+.page-content .section {
+  padding: 0;
 }
 
 .section {
@@ -802,6 +822,10 @@ a {
   }
 
   .home-directory {
+    padding: 0 2rem 2.5rem;
+  }
+
+  .page-content {
     padding: 0 2rem 2.5rem;
   }
 }

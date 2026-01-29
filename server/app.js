@@ -62,6 +62,27 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     res.sendFile(path.join(__dirname, "..", "client", "details.html"));
   });
 
+  const pageRoutes = [
+    { route: "/profiles", file: "profiles.html" },
+    { route: "/dashboards", file: "dashboards.html" },
+    { route: "/calendar", file: "calendar.html" },
+    { route: "/access", file: "access.html" },
+    { route: "/messageboard", file: "messageboard.html" },
+    { route: "/embed", file: "embed.html" },
+    { route: "/sharing", file: "sharing.html" },
+    { route: "/audit", file: "audit.html" },
+    { route: "/roles", file: "roles.html" },
+    { route: "/resilience", file: "resilience.html" },
+    { route: "/developer", file: "developer.html" },
+    { route: "/observability", file: "observability.html" }
+  ];
+
+  pageRoutes.forEach((page) => {
+    app.get(page.route, (req, res) => {
+      res.sendFile(path.join(__dirname, "..", "client", page.file));
+    });
+  });
+
   app.get("/api/flags", (req, res) => {
     res.json(flags);
   });

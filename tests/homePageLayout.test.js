@@ -13,23 +13,25 @@ describe("home page layout", () => {
     expect(html).toContain("directory-card");
   });
 
-  test("directory links point at the details route", () => {
+  test("directory links point at focused pages", () => {
     const html = fs.readFileSync(
       path.join(__dirname, "..", "client", "index.html"),
       "utf8"
     );
 
     const links = [
-      "/details#user",
-      "/details#dashboard",
-      "/details#calendar",
-      "/details#access",
-      "/details#messageboard",
-      "/details#sharing",
-      "/details#audit",
-      "/details#roles",
-      "/details#developer",
-      "/details#observability"
+      "/profiles",
+      "/dashboards",
+      "/calendar",
+      "/access",
+      "/messageboard",
+      "/embed",
+      "/sharing",
+      "/audit",
+      "/roles",
+      "/resilience",
+      "/developer",
+      "/observability"
     ];
 
     links.forEach((href) => {
