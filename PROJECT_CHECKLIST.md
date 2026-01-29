@@ -56,5 +56,5 @@
 
 ## Deployment
 - [ ] **T-0701**: Azure App Service deployment pipeline.
-- [ ] **T-0702**: Environment configuration for production (MongoDB, secrets).
-- [ ] **T-0703**: Build artifacts and release validation checklist.
+- [x] **T-0702**: Environment configuration for production (MongoDB, secrets).
+- [x] **T-0703**: Build artifacts and release validation checklist.
