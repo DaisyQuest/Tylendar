@@ -80,7 +80,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 15. **Home Page Experience**
    - Validate the simplified hero banner and login/register actions on the home page.
     - Verify the login/register modal opens from the home navigation and captures org/role inputs.
-    - Confirm the home page feature directory links to user-specific views and key feature sections.
+    - Confirm the home page feature directory links to the Home Details route anchors for each feature section.
     - Confirm the Home Details page renders highlights, dashboards, calendar previews, access, and MessageBoard sections.
     - Verify the Home Details feature preview layout uses the two-column grid at desktop widths to reduce vertical scrolling.
 16. **Merge & Dependency Integrity**
