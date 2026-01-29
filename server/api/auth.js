@@ -26,11 +26,12 @@ function sanitizeUser(user) {
   return safeUser;
 }
 
-function applySessionCookie(res, token) {
+function applySessionCookie(res, token, options = {}) {
   res.cookie("session", token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    maxAge: options.maxAge
   });
 }
 
@@ -107,7 +108,7 @@ function createAuthRouter({
     }
 
     const session = sessionStore.createSession({ userId: user.id });
-    applySessionCookie(res, session.token);
+    applySessionCookie(res, session.token, { maxAge: sessionStore.getTtlMs?.() });
     await auditService.record({
       action: "login",
       actorId: user.id,
@@ -167,7 +168,7 @@ function createAuthRouter({
     }
 
     const session = sessionStore.createSession({ userId: user.id });
-    applySessionCookie(res, session.token);
+    applySessionCookie(res, session.token, { maxAge: sessionStore.getTtlMs?.() });
     await auditService.record({
       action: "register",
       actorId: user.id,
@@ -244,7 +245,7 @@ function createAuthRouter({
   }));
 
   router.get("/session", requireAuth, (req, res) => {
-    res.json({ user: req.user, session: req.session });
+    res.json({ user: req.user, session: req.session, permissions: req.permissions || [] });
   });
 
   router.get("/flags", (req, res) => {

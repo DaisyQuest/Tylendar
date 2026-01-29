@@ -2,11 +2,20 @@ const express = require("express");
 const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { PERMISSIONS } = require("../models/calendarPermissions");
+const { createPermissionEvaluator } = require("../permissions/permissionEvaluator");
 
-function createEventRouter({ eventsRepository, calendarPermissionsRepository, permissionGuard, auditService }) {
+function createEventRouter({
+  eventsRepository,
+  calendarPermissionsRepository,
+  permissionGuard,
+  auditService,
+  permissionEvaluator: injectedPermissionEvaluator
+}) {
   const router = express.Router();
-  const viewPermissions = new Set([PERMISSIONS[0], PERMISSIONS[1], PERMISSIONS[2]]);
-  const hasViewPermission = (permissions = []) => permissions.some((permission) => viewPermissions.has(permission));
+  const permissionEvaluator =
+    injectedPermissionEvaluator || createPermissionEvaluator({ calendarPermissionsRepository, auditService });
+  const hasViewPermission = (permissions = []) =>
+    permissionEvaluator.evaluatePermissions(permissions, { anyOf: permissionEvaluator.permissionSets.view });
 
   router.get("/:eventId", requireAuth, asyncHandler(async (req, res) => {
     const event = await eventsRepository.getById(req.params.eventId);
@@ -19,16 +28,19 @@ function createEventRouter({ eventsRepository, calendarPermissionsRepository, pe
   router.get("/", requireAuth, asyncHandler(async (req, res) => {
     const calendarId = req.query.calendarId;
     if (calendarId) {
-      const entries = await calendarPermissionsRepository.list({ calendarId, userId: req.user.id });
-      const permissions = entries.flatMap((entry) => entry.permissions || []);
-      if (!hasViewPermission(permissions)) {
-        await auditService.record({
+      const evaluation = await permissionEvaluator.evaluate({
+        userId: req.user.id,
+        calendarId,
+        requirement: { anyOf: permissionEvaluator.permissionSets.view },
+        auditContext: {
           action: "permission_check",
           actorId: req.user.id,
           targetId: calendarId,
-          status: "denied",
-          details: "Missing permission: View Calendar"
-        });
+          details: "Missing permission: View Calendar",
+          logAllowed: false
+        }
+      });
+      if (!evaluation.allowed) {
         return res.status(403).json({ error: "Permission denied" });
       }
     }

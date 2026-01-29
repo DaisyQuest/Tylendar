@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { PERMISSIONS } = require("../models/calendarPermissions");
+const { createPermissionEvaluator } = require("../permissions/permissionEvaluator");
 
 function createCalendarRouter({
   calendarsRepository,
@@ -10,13 +11,15 @@ function createCalendarRouter({
   calendarPermissionsRepository,
   shareTokensRepository,
   permissionGuard,
-  auditService
+  auditService,
+  permissionEvaluator: injectedPermissionEvaluator
 }) {
   const router = express.Router();
 
-  const viewPermissions = new Set([PERMISSIONS[0], PERMISSIONS[1], PERMISSIONS[2]]);
-  const shareViewPermissions = new Set([PERMISSIONS[0], PERMISSIONS[1]]);
-  const hasViewPermission = (permissions = []) => permissions.some((permission) => viewPermissions.has(permission));
+  const permissionEvaluator =
+    injectedPermissionEvaluator || createPermissionEvaluator({ calendarPermissionsRepository, auditService });
+  const hasViewPermission = (permissions = []) =>
+    permissionEvaluator.evaluatePermissions(permissions, { anyOf: permissionEvaluator.permissionSets.view });
 
   async function ensureDefaultCalendar(user) {
     const calendarId = `cal-${crypto.randomBytes(8).toString("hex")}`;
@@ -157,7 +160,9 @@ function createCalendarRouter({
         return res.status(403).json({ error: "Calendar is private" });
       }
       sharePermissions = entry.permissions || [];
-      const allowed = sharePermissions.some((permission) => shareViewPermissions.has(permission));
+      const allowed = permissionEvaluator.evaluatePermissions(sharePermissions, {
+        anyOf: permissionEvaluator.permissionSets.shareView
+      });
       if (!allowed) {
         return res.status(403).json({ error: "Share link does not allow viewing" });
       }

@@ -133,6 +133,16 @@ describe("client rendering", () => {
     ]);
   });
 
+  test("getAccountHighlights defaults when user is missing", () => {
+    const highlights = getAccountHighlights();
+
+    expect(highlights).toEqual([
+      { title: "Email", description: "—" },
+      { title: "Organization", description: "None" },
+      { title: "Role", description: "member" }
+    ]);
+  });
+
   test("renderAuthStatus returns signed-out label", () => {
     const html = renderAuthStatus(null);
 
@@ -248,6 +258,17 @@ describe("client rendering", () => {
     expect(html).toContain("No calendar data available.");
   });
 
+  test("renderCalendarView falls back to default label and summary", () => {
+    const html = renderCalendarView({
+      label: "",
+      summary: "",
+      events: [{ title: "Event", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    expect(html).toContain("Calendar");
+    expect(html).toContain("No calendar data available.");
+  });
+
   test("renderCalendarView handles invalid reference dates", () => {
     const html = renderCalendarView({
       label: "Calendar",
@@ -273,6 +294,17 @@ describe("client rendering", () => {
     expect(html).toContain("Event A");
     expect(html).toContain("Event B");
     expect(html).toContain("Jan");
+  });
+
+  test("renderCalendarView uses untitled label when title is missing", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      events: [{ startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    expect(html).toContain("Untitled");
   });
 
   test("renderCalendarView shows overflow counts for busy days", () => {
@@ -395,6 +427,20 @@ describe("client rendering", () => {
     expect(filledHtml).toContain("Active");
   });
 
+  test("renderAccessMatrix handles missing permissions and timestamps", () => {
+    const html = renderAccessMatrix([
+      {
+        user: "A",
+        calendar: "Cal",
+        permissions: undefined,
+        updatedAt: ""
+      }
+    ]);
+
+    expect(html).toContain("No permissions assigned");
+    expect(html).toContain("Not updated yet");
+  });
+
   test("renderAccessMatrix renders pending requests, notes, and status variants", () => {
     const html = renderAccessMatrix({
       entries: [
@@ -491,6 +537,12 @@ describe("client rendering", () => {
     expect(fallbackHtml).toContain("Embed snippet unavailable");
   });
 
+  test("renderEmbedWidget uses default title when missing", () => {
+    const html = renderEmbedWidget({ sampleSnippet: "<iframe />" });
+
+    expect(html).toContain("Embed");
+  });
+
   test("renderSharingOptions handles empty and formats", () => {
     const emptyHtml = renderSharingOptions({ options: [] });
     const defaultHtml = renderSharingOptions();
@@ -523,6 +575,15 @@ describe("client rendering", () => {
     expect(noExtrasHtml).toContain("Internal use only");
   });
 
+  test("renderSharingOptions handles missing descriptions", () => {
+    const html = renderSharingOptions({
+      options: [{ channel: "Share link", formats: ["ICS"] }]
+    });
+
+    expect(html).toContain("Share link");
+    expect(html).toContain("Formats: ICS");
+  });
+
   test("renderAuditHistory handles empty and entries", () => {
     const emptyHtml = renderAuditHistory({ entries: [] });
     const defaultHtml = renderAuditHistory();
@@ -535,6 +596,14 @@ describe("client rendering", () => {
     expect(emptyHtml).toContain("No audit activity recorded");
     expect(defaultHtml).toContain("No audit activity recorded");
     expect(filledHtml).toContain("Logged in");
+  });
+
+  test("renderAuditHistory uses action when summary is missing", () => {
+    const html = renderAuditHistory({
+      entries: [{ action: "login" }]
+    });
+
+    expect(html).toContain("login");
   });
 
   test("renderRoleManagement handles empty and content", () => {
@@ -838,6 +907,44 @@ describe("profile management controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.getElementById("profile-management").innerHTML).toContain("Manage profile");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initProfileManagement recreates management markup when form is removed", async () => {
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { name: "Test", email: "user@example.com" } })
+    );
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Updated" />
+          <input name="email" value="updated@example.com" />
+          <input name="organizationId" value="" />
+          <input name="role" value="admin" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ user: { name: "Updated", email: "updated@example.com" } })
+      })
+    );
+
+    await initProfileManagement();
+    const form = document.querySelector("[data-profile-form]");
+    const container = document.getElementById("profile-management");
+    container.id = "profile-management-removed";
+    container.innerHTML = "";
+    form.dispatchEvent(new Event("submit"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.getElementById("profile-management-removed").innerHTML).toContain("Manage profile");
 
     global.fetch.mockRestore();
   });
@@ -1382,6 +1489,16 @@ describe("event creation and management", () => {
     expect(modal.classList.contains("event-modal--open")).toBe(false);
   });
 
+  test("initEventModal ignores missing modal targets", () => {
+    document.body.innerHTML = `
+      <button data-event-modal-open="missing-modal"></button>
+    `;
+
+    initEventModal();
+    document.querySelector("[data-event-modal-open]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+  });
+
   test("initEventCreation ignores submit events from non-forms", () => {
     initEventCreation();
 
@@ -1612,6 +1729,13 @@ describe("event creation and management", () => {
     expect(feedback.classList.contains("is-hidden")).toBe(false);
   });
 
+  test("setEventListFeedback handles missing feedback element", () => {
+    document.body.innerHTML = `<div id="event-list"></div>`;
+    const container = document.getElementById("event-list");
+
+    expect(() => setEventListFeedback(container, "Ignored")).not.toThrow();
+  });
+
   test("initEventManagement loads events and deletes entries", async () => {
     document.body.innerHTML = `
       <form data-event-filter data-event-list-target="event-list">
@@ -1764,6 +1888,32 @@ describe("event creation and management", () => {
         json: () => Promise.resolve({ error: "Delete failed" })
       })
     );
+
+    initEventManagement();
+    document.querySelector("[data-event-delete]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-event-list-feedback]").textContent).toContain("Unable to delete event");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initEventManagement handles delete exceptions", async () => {
+    document.body.innerHTML = `
+      <div data-event-list data-calendar-id="cal-1">
+        <div class="form-feedback is-hidden" data-event-list-feedback></div>
+        <button data-event-delete="evt-1"></button>
+      </div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() => Promise.reject(new Error("Network error")));
 
     initEventManagement();
     document.querySelector("[data-event-delete]")
@@ -2674,6 +2824,29 @@ describe("auth utilities", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.querySelector("[data-auth-feedback]").textContent).toContain("Logout failed");
+    expect(readAuthState(storage)).toBeNull();
+  });
+
+  test("updateAuthStatus ignores missing feedback element", async () => {
+    document.body.innerHTML = `
+      <span data-auth-status></span>
+    `;
+
+    const storage = createStorage();
+    writeAuthState({ token: "token", user: { email: "user@example.com" } }, storage);
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Logout failed" })
+      })
+    );
+
+    updateAuthStatus(readAuthState(storage), storage);
+    document.querySelector("[data-auth-logout]").click();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(readAuthState(storage)).toBeNull();
   });
 
