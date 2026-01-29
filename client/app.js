@@ -17,6 +17,118 @@ const defaultSelectors = {
   operationalAlerts: "operational-alerts"
 };
 
+const AUTH_STORAGE_KEY = "tylendar-auth";
+
+function getStorage(storageOverride) {
+  if (storageOverride) {
+    return storageOverride;
+  }
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage;
+}
+
+function readAuthState(storageOverride) {
+  const storage = getStorage(storageOverride);
+  if (!storage) {
+    return null;
+  }
+  const raw = storage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeAuthState(payload, storageOverride) {
+  const storage = getStorage(storageOverride);
+  if (!storage) {
+    return null;
+  }
+  storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+  return payload;
+}
+
+function clearAuthState(storageOverride) {
+  const storage = getStorage(storageOverride);
+  if (!storage) {
+    return null;
+  }
+  storage.removeItem(AUTH_STORAGE_KEY);
+  return null;
+}
+
+function renderAuthStatus(state) {
+  if (!state || !state.user) {
+    return `<span class="auth-status__text">Not signed in</span>`;
+  }
+  const label = state.user.name || state.user.email || "Account";
+  return `
+    <span class="auth-status__text">Signed in as ${label}</span>
+    <button class="ghost auth-logout" type="button" data-auth-logout>Log out</button>
+  `;
+}
+
+function setAuthFeedback(message, tone = "info") {
+  const feedback = document.querySelector("[data-auth-feedback]");
+  if (!feedback) {
+    return;
+  }
+  feedback.textContent = message;
+  feedback.dataset.tone = tone;
+  feedback.classList.toggle("is-hidden", !message);
+}
+
+function updateAuthStatus(state, storageOverride) {
+  const containers = document.querySelectorAll("[data-auth-status]");
+  containers.forEach((container) => {
+    container.innerHTML = renderAuthStatus(state);
+    const logout = container.querySelector("[data-auth-logout]");
+    if (logout) {
+      logout.addEventListener("click", async () => {
+        try {
+          await postJson("/api/auth/logout", {}, { token: state?.token });
+        } catch (error) {
+          setAuthFeedback(error.message, "error");
+        }
+        clearAuthState(storageOverride);
+        updateAuthStatus(null, storageOverride);
+      });
+    }
+  });
+
+  const isAuthed = Boolean(state && state.token);
+  document.querySelectorAll("[data-auth-trigger]").forEach((button) => {
+    button.disabled = isAuthed;
+    button.classList.toggle("is-hidden", isAuthed);
+  });
+}
+
+function buildAuthPayload(mode, form) {
+  const getValue = (name) => {
+    const input = form.querySelector(`[name="${name}"]`);
+    return input ? input.value.trim() : "";
+  };
+  if (mode === "login") {
+    return {
+      email: getValue("email"),
+      password: getValue("password")
+    };
+  }
+  return {
+    name: getValue("name"),
+    email: getValue("email"),
+    password: getValue("password"),
+    organizationId: getValue("organizationId"),
+    role: getValue("role")
+  };
+}
+
 function renderProfile(profile) {
   return `
     <h3>${profile.name}</h3>
@@ -456,8 +568,107 @@ async function fetchJson(url) {
   return response.json();
 }
 
+async function postJson(url, payload, { token } = {}) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = data && data.error ? data.error : "Request failed";
+    throw new Error(message);
+  }
+  return data;
+}
+
+function initAuthUI({ storage } = {}) {
+  const modal = document.getElementById("auth-modal");
+  const triggers = document.querySelectorAll("[data-auth-trigger]");
+  if (!modal || triggers.length === 0) {
+    return { enabled: false };
+  }
+
+  const tabs = modal.querySelectorAll("[data-auth-tab]");
+  const panels = modal.querySelectorAll("[data-auth-panel]");
+  const forms = modal.querySelectorAll("form[data-auth-panel]");
+  const closeTargets = modal.querySelectorAll("[data-auth-close]");
+
+  const setMode = (mode) => {
+    tabs.forEach((tab) => {
+      tab.classList.toggle("auth-tab--active", tab.dataset.authTab === mode);
+    });
+    panels.forEach((panel) => {
+      panel.classList.toggle("auth-panel--active", panel.dataset.authPanel === mode);
+    });
+  };
+
+  const openModal = (mode) => {
+    setMode(mode);
+    modal.classList.add("auth-modal--open");
+    modal.setAttribute("aria-hidden", "false");
+    setAuthFeedback("", "info");
+  };
+
+  const closeModal = () => {
+    modal.classList.remove("auth-modal--open");
+    modal.setAttribute("aria-hidden", "true");
+  };
+
+  triggers.forEach((button) => {
+    button.addEventListener("click", () => {
+      openModal(button.dataset.authTrigger || "login");
+    });
+  });
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      setMode(tab.dataset.authTab);
+    });
+  });
+
+  closeTargets.forEach((target) => {
+    target.addEventListener("click", closeModal);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeModal();
+    }
+  });
+
+  forms.forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const mode = form.dataset.authPanel;
+      try {
+        const payload = buildAuthPayload(mode, form);
+        const response = await postJson(`/api/auth/${mode}`, payload);
+        writeAuthState(response, storage);
+        updateAuthStatus(response);
+        setAuthFeedback(`Signed in as ${response.user?.name || response.user?.email}`, "success");
+        closeModal();
+        form.reset();
+      } catch (error) {
+        setAuthFeedback(error.message, "error");
+      }
+    });
+  });
+
+  updateAuthStatus(readAuthState(storage), storage);
+  return { enabled: true };
+}
+
 async function init(selectorOverrides = {}) {
   const selectors = { ...defaultSelectors, ...selectorOverrides };
+  const targets = Object.values(selectors);
+  const shouldHydrate = targets.some((selector) => document.getElementById(selector));
+  if (!shouldHydrate) {
+    return { hydrated: false };
+  }
 
   const [
     profile,
@@ -496,29 +707,35 @@ async function init(selectorOverrides = {}) {
       fetchJson("/api/monitoring/alerts")
     ]);
 
-  document.getElementById(selectors.profileCard).innerHTML = renderProfile(profile);
-  document.getElementById(selectors.homeHighlights).innerHTML = renderHighlights(home.highlights);
-  document.getElementById(selectors.userDashboard).innerHTML = renderDashboard(
-    "User Dashboard",
-    userDash
-  );
-  document.getElementById(selectors.orgDashboard).innerHTML = renderOrganizationStats(orgDash);
-  document.getElementById(selectors.calendarView).innerHTML = renderCalendarView(calendar);
-  document.getElementById(selectors.eventList).innerHTML = renderEventList(events);
-  document.getElementById(selectors.accessMatrix).innerHTML = renderAccessMatrix(access.entries);
-  document.getElementById(selectors.messageBoard).innerHTML = renderMessageBoard(message);
-  document.getElementById(selectors.embedWidget).innerHTML = renderEmbedWidget(embed);
-  document.getElementById(selectors.sharingOptions).innerHTML = renderSharingOptions(sharing);
-  document.getElementById(selectors.auditHistory).innerHTML = renderAuditHistory(audit);
-  document.getElementById(selectors.roleManagement).innerHTML = renderRoleManagement(roles);
-  document.getElementById(selectors.faultTolerance).innerHTML = renderFaultTolerance(faultTolerance);
-  document.getElementById(selectors.developerPortal).innerHTML = renderDeveloperPortal(developer);
-  document.getElementById(selectors.observability).innerHTML = renderObservability(observability);
-  document.getElementById(selectors.operationalAlerts).innerHTML = renderOperationalAlerts(alerts);
+  const setSection = (selector, html) => {
+    const element = document.getElementById(selector);
+    if (element) {
+      element.innerHTML = html;
+    }
+  };
+
+  setSection(selectors.profileCard, renderProfile(profile));
+  setSection(selectors.homeHighlights, renderHighlights(home.highlights));
+  setSection(selectors.userDashboard, renderDashboard("User Dashboard", userDash));
+  setSection(selectors.orgDashboard, renderOrganizationStats(orgDash));
+  setSection(selectors.calendarView, renderCalendarView(calendar));
+  setSection(selectors.eventList, renderEventList(events));
+  setSection(selectors.accessMatrix, renderAccessMatrix(access.entries));
+  setSection(selectors.messageBoard, renderMessageBoard(message));
+  setSection(selectors.embedWidget, renderEmbedWidget(embed));
+  setSection(selectors.sharingOptions, renderSharingOptions(sharing));
+  setSection(selectors.auditHistory, renderAuditHistory(audit));
+  setSection(selectors.roleManagement, renderRoleManagement(roles));
+  setSection(selectors.faultTolerance, renderFaultTolerance(faultTolerance));
+  setSection(selectors.developerPortal, renderDeveloperPortal(developer));
+  setSection(selectors.observability, renderObservability(observability));
+  setSection(selectors.operationalAlerts, renderOperationalAlerts(alerts));
+  return { hydrated: true };
 }
 
 if (typeof window !== "undefined") {
   window.addEventListener("DOMContentLoaded", () => {
+    initAuthUI();
     init().catch((error) => {
       console.error(error);
     });
@@ -527,9 +744,15 @@ if (typeof window !== "undefined") {
 
 if (typeof module !== "undefined") {
   module.exports = {
+    buildAuthPayload,
+    clearAuthState,
     fetchJson,
     init,
+    initAuthUI,
+    postJson,
+    readAuthState,
     renderAccessMatrix,
+    renderAuthStatus,
     renderCalendarView,
     renderDashboard,
     renderEventList,
@@ -544,6 +767,8 @@ if (typeof module !== "undefined") {
     renderObservability,
     renderOperationalAlerts,
     renderOrganizationStats,
-    renderProfile
+    renderProfile,
+    updateAuthStatus,
+    writeAuthState
   };
 }

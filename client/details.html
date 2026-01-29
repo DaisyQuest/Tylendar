@@ -26,8 +26,9 @@
           <a href="#observability">Observability</a>
         </div>
         <div class="nav-actions">
-          <button class="ghost">Log in</button>
-          <button class="primary">Register</button>
+          <span class="auth-status" data-auth-status>Not signed in</span>
+          <button class="ghost" data-auth-trigger="login">Log in</button>
+          <button class="primary" data-auth-trigger="register">Register</button>
         </div>
       </nav>
       <section class="hero-banner" id="home">
@@ -177,6 +178,60 @@
         <a href="#">Help</a>
       </div>
     </footer>
+
+    <div class="auth-modal" id="auth-modal" aria-hidden="true">
+      <div class="auth-modal__backdrop" data-auth-close></div>
+      <div class="auth-modal__card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <button class="auth-modal__close" type="button" data-auth-close aria-label="Close">
+          ×
+        </button>
+        <div class="auth-modal__tabs">
+          <button class="auth-tab auth-tab--active" type="button" data-auth-tab="login">Log in</button>
+          <button class="auth-tab" type="button" data-auth-tab="register">Register</button>
+        </div>
+        <div class="auth-panels">
+          <form class="auth-panel auth-panel--active" data-auth-panel="login">
+            <h3 id="auth-title">Welcome back</h3>
+            <label class="auth-field">
+              <span>Email</span>
+              <input type="email" name="email" required />
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <input type="password" name="password" required />
+            </label>
+            <button class="primary" type="submit">Log in</button>
+          </form>
+
+          <form class="auth-panel" data-auth-panel="register">
+            <h3>Create your account</h3>
+            <label class="auth-field">
+              <span>Name</span>
+              <input type="text" name="name" required />
+            </label>
+            <label class="auth-field">
+              <span>Email</span>
+              <input type="email" name="email" required />
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <input type="password" name="password" minlength="8" required />
+            </label>
+            <label class="auth-field">
+              <span>Organization ID</span>
+              <input type="text" name="organizationId" value="org-1" required />
+              <small>Tylendar Community default is <strong>org-1</strong>.</small>
+            </label>
+            <label class="auth-field">
+              <span>Role</span>
+              <input type="text" name="role" value="member" />
+            </label>
+            <button class="primary" type="submit">Register</button>
+          </form>
+        </div>
+        <div class="auth-feedback is-hidden" data-auth-feedback></div>
+      </div>
+    </div>
 
     <script src="/static/app.js" defer></script>
   </body>
