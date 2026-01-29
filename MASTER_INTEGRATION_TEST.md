@@ -61,6 +61,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 9. **Manage Access Flow**
    - Assign granular permissions; verify immediate enforcement.
    - Confirm Manage Access UI table lists assigned permissions accurately.
+   - Validate the Access Command Center shows summary metrics, default policies, and pending access requests.
+   - Confirm permission playbook content and governance checklist are visible for owners.
    - Validate permission revocation removes access across all UI entry points.
 10. **Audit History**
     - Ensure audit logs surface readable history.

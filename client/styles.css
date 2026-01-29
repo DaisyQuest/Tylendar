@@ -636,6 +636,107 @@ a {
   font-weight: 600;
 }
 
+.access-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.access-actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.access-summary {
+  margin-top: 1.5rem;
+}
+
+.access-summary-card {
+  background: #f9f5ff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1rem 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.access-summary-card strong {
+  font-size: 1.6rem;
+  color: #3f2f7a;
+}
+
+.access-summary__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.access-insights {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.access-metrics {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.access-metrics span {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.access-request {
+  margin-top: 1.5rem;
+  padding: 1rem 1.2rem;
+  border-radius: 18px;
+  border: 1px dashed var(--border);
+  background: #fff;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.access-notes {
+  margin-top: 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.access-table {
+  margin-top: 1.5rem;
+}
+
+.access-table__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.access-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #efeaff;
+  color: #4c3ca8;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.access-empty {
+  margin-top: 1rem;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
