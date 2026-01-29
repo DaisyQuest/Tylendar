@@ -19,6 +19,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Verify new users receive a private default calendar and self-only permissions by default.
    - Validate User Management + Profile UI sections render notifications and activity feed.
    - Confirm feature flags toggle profile modules without breaking navigation.
+   - Update profile details via the profile management form and confirm changes persist in the profile summary and session state.
    - Verify profile edits persist across session refresh and re-login.
 2. **Organization Lifecycle**
    - Create organization, assign roles, configure permissions.
@@ -74,7 +75,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
     - Verify operational metrics align with Embed Widget usage and availability.
     - Confirm admin dashboards show counts for users, organizations, calendars, and events.
     - Confirm alerts trigger on simulated error rates and recover after resolution.
-    - Validate observability dashboards and operational alert feeds render updated data.
+    - Validate server status dashboards and operational alert feeds render updated data, including user/event statistics.
 14. **Fault Tolerance**
     - Simulate failures and ensure graceful degradation.
     - Validate retries and fallback messaging across API and UI flows.
@@ -82,9 +83,9 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 15. **Home Page Experience**
    - Validate the production landing header and login/register actions on the home page.
     - Verify the login/register modal opens from the home navigation and captures org/role inputs.
-    - Confirm the home page quick links route to dedicated focus pages (profiles, dashboards, calendar, access, MessageBoard, embed, sharing, audit, roles, resilience, developer, observability).
+    - Confirm the home page quick links route to dedicated focus pages (profiles, dashboards, calendar, access, MessageBoard, embed, sharing, audit, roles, resilience, developer, server status).
     - Confirm the Experience Overview page lists the same focus pages with neutral, production-ready copy.
-    - Validate each focus page renders the correct primary widgets with empty-state messaging when no data exists (profile summary, dashboards, calendar view + event list, access matrix, MessageBoard, embed widget, sharing options, audit history, role management, fault tolerance, developer portal, observability + alerts).
+    - Validate each focus page renders the correct primary widgets with empty-state messaging when no data exists (profile summary, dashboards, calendar view + event list, access matrix, MessageBoard, embed widget, sharing options, audit history, role management, fault tolerance, developer portal, server status + alerts).
     - Verify the focused page layout uses the page-content container for single-column readability.
 16. **Merge & Dependency Integrity**
     - Regenerate `package-lock.json` and confirm dependency resolution remains stable.
