@@ -717,6 +717,147 @@ a {
   gap: 1.2rem;
 }
 
+.event-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 30;
+}
+
+.event-modal--open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.event-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(24, 16, 46, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.event-modal__card {
+  position: relative;
+  background: #fff;
+  border-radius: 24px;
+  padding: 2rem;
+  max-width: 720px;
+  width: min(720px, 100%);
+  box-shadow: 0 24px 60px rgba(24, 16, 46, 0.35);
+  border: 1px solid rgba(123, 108, 246, 0.2);
+  display: grid;
+  gap: 1.5rem;
+  z-index: 1;
+}
+
+.event-modal__header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.event-modal__close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  border: none;
+  background: rgba(123, 108, 246, 0.1);
+  color: #3f2f7a;
+  font-size: 1.4rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.event-modal__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.event-form textarea {
+  resize: vertical;
+}
+
+.event-studio {
+  min-height: calc(100vh - 220px);
+  background: linear-gradient(140deg, rgba(92, 77, 214, 0.08), rgba(255, 255, 255, 0.95));
+  border-radius: 28px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 38px rgba(63, 47, 122, 0.12);
+}
+
+.event-studio__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.event-studio__panel {
+  background: #fff;
+  border-radius: 20px;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 30px rgba(63, 47, 122, 0.08);
+  display: grid;
+  gap: 1rem;
+}
+
+.event-studio__sidebar {
+  display: grid;
+  gap: 1rem;
+}
+
+.event-highlight {
+  background: #f7f3ff;
+  border-radius: 16px;
+  padding: 1rem;
+  border: 1px solid rgba(123, 108, 246, 0.2);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.event-manager {
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+
+.event-manager__item {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+  border: 1px solid rgba(123, 108, 246, 0.2);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  box-shadow: 0 12px 24px rgba(63, 47, 122, 0.1);
+}
+
+.event-manager__item p {
+  margin: 0.25rem 0;
+}
+
+.event-manager__action {
+  white-space: nowrap;
+}
+
+.event-management {
+  display: grid;
+  gap: 1rem;
+}
+
 .auth-modal {
   position: fixed;
   inset: 0;
@@ -825,7 +966,8 @@ a {
 }
 
 .form-field input,
-.form-field select {
+.form-field select,
+.form-field textarea {
   padding: 0.65rem 0.9rem;
   border-radius: 14px;
   border: 1px solid var(--border);
@@ -947,6 +1089,18 @@ a {
 
   .calendar-grid {
     grid-template-columns: 80px repeat(auto-fit, minmax(120px, 1fr));
+  }
+
+  .event-studio__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .event-modal {
+    padding: 1rem;
+  }
+
+  .event-modal__card {
+    padding: 1.5rem;
   }
 
   .home-directory {

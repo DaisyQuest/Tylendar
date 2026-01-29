@@ -43,6 +43,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Create, update, delete events across multiple calendars.
    - Validate event metadata (time zone, reminders, attendees) persists across edits.
    - Confirm event visibility honors calendar-level permissions and shared ownership.
+   - Launch the in-calendar **New event** modal, complete scheduling details, and confirm the modal closes after event creation.
+   - Use the full-screen **Event Studio** from navigation to create events and manage/deleted scheduled entries.
 6. **MessageBoard Comments**
    - Post, edit, delete comments; permission checks.
    - Confirm MessageBoard UI displays threaded comments and timestamps.

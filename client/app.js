@@ -98,6 +98,70 @@ function setFormFeedback(form, message, tone = "info") {
   feedback.classList.toggle("is-hidden", !message);
 }
 
+function createEventId() {
+  return `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function parseEventDateTime(dateValue, timeValue) {
+  const dateText = String(dateValue || "").trim();
+  if (!dateText) {
+    return null;
+  }
+  const timeText = String(timeValue || "09:00").trim() || "09:00";
+  const parsed = new Date(`${dateText}T${timeText}`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed.toISOString();
+}
+
+function buildEventPayload(form, authState) {
+  const formData = new FormData(form);
+  const title = String(formData.get("title") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const calendarId = String(formData.get("calendarId") || "").trim();
+  const startsAt = parseEventDateTime(formData.get("startsDate"), formData.get("startsTime"));
+  const endsAt = parseEventDateTime(
+    formData.get("endsDate") || formData.get("startsDate"),
+    formData.get("endsTime") || formData.get("startsTime")
+  );
+  const createdBy = authState?.user?.id;
+  const errors = [];
+
+  if (!createdBy) {
+    errors.push("Sign in to create events.");
+  }
+  if (!calendarId) {
+    errors.push("Calendar ID is required.");
+  }
+  if (!title) {
+    errors.push("Event title is required.");
+  }
+  if (!startsAt || !endsAt) {
+    errors.push("Start and end times are required.");
+  }
+  if (startsAt && endsAt) {
+    const start = new Date(startsAt).getTime();
+    const end = new Date(endsAt).getTime();
+    if (!Number.isNaN(start) && !Number.isNaN(end) && end < start) {
+      errors.push("End time must be after the start time.");
+    }
+  }
+
+  return {
+    errors,
+    payload: {
+      id: createEventId(),
+      title,
+      description,
+      calendarIds: calendarId ? [calendarId] : [],
+      startsAt,
+      endsAt,
+      createdBy: createdBy || ""
+    }
+  };
+}
+
 function getSelectedPermissions(form) {
   if (!form) {
     return [];
@@ -403,7 +467,7 @@ function renderCalendarView(calendar = {}) {
             </div>
           </div>
           <div class="calendar-control__actions">
-            <button class="calendar-action" type="button">New event</button>
+            <button class="calendar-action" type="button" data-event-modal-open="event-modal">New event</button>
             <button class="calendar-action" type="button">Share</button>
           </div>
         </div>
@@ -422,6 +486,56 @@ function renderCalendarView(calendar = {}) {
           <p>Stay on top of what is scheduled across your calendars.</p>
           <ul class="list">${agendaContent}</ul>
         </aside>
+      </div>
+    </div>
+    <div class="event-modal" id="event-modal" data-event-modal aria-hidden="true">
+      <div class="event-modal__backdrop" data-event-modal-close></div>
+      <div class="event-modal__card" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+        <button class="event-modal__close" type="button" data-event-modal-close aria-label="Close">
+          ×
+        </button>
+        <div class="event-modal__header">
+          <p class="eyebrow">New event</p>
+          <h3 id="event-modal-title">Create a new event</h3>
+          <p class="muted">Add a title, schedule, and details for your calendar.</p>
+        </div>
+        <form class="form event-form" data-event-create data-event-modal-close-on-success>
+          <div class="grid two">
+            <label class="form-field">
+              <span>Event title</span>
+              <input type="text" name="title" placeholder="e.g., Quarterly planning session" required />
+            </label>
+            <label class="form-field">
+              <span>Calendar ID</span>
+              <input type="text" name="calendarId" placeholder="cal-1234" required />
+            </label>
+            <label class="form-field">
+              <span>Start date</span>
+              <input type="date" name="startsDate" required />
+            </label>
+            <label class="form-field">
+              <span>Start time</span>
+              <input type="time" name="startsTime" required />
+            </label>
+            <label class="form-field">
+              <span>End date</span>
+              <input type="date" name="endsDate" required />
+            </label>
+            <label class="form-field">
+              <span>End time</span>
+              <input type="time" name="endsTime" required />
+            </label>
+          </div>
+          <label class="form-field">
+            <span>Description</span>
+            <textarea name="description" rows="3" placeholder="Agenda, location, or virtual meeting link."></textarea>
+          </label>
+          <div class="event-modal__actions">
+            <a class="ghost" href="/events">Open full screen editor</a>
+            <button class="primary" type="submit">Create event</button>
+          </div>
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
       </div>
     </div>
   `;
@@ -445,6 +559,36 @@ function renderEventList(view = { title: "Events", items: [] }) {
           const dateLabel = event.day || formatEventDateLabel(event.startsAt);
           return `<li>${event.title} · ${dateLabel}</li>`;
         })
+        .join("")}
+    </ul>
+  `;
+}
+
+function renderEventManagementList(events = []) {
+  if (!events.length) {
+    return renderEmptyState({
+      title: "Event Management",
+      message: "No events found yet. Create one to get started."
+    });
+  }
+
+  return `
+    <ul class="event-manager">
+      ${events
+        .map(
+          (event) => `
+        <li class="event-manager__item">
+          <div>
+            <strong>${event.title}</strong>
+            <p class="muted">${formatEventDateLabel(event.startsAt)}</p>
+            <p>${event.description || "No description provided."}</p>
+          </div>
+          <button class="ghost event-manager__action" type="button" data-event-delete="${event.id}">
+            Remove
+          </button>
+        </li>
+      `
+        )
         .join("")}
     </ul>
   `;
@@ -852,6 +996,207 @@ async function initProfileManagement() {
   });
 }
 
+let eventModalInitialized = false;
+let eventCreationInitialized = false;
+let eventManagementInitialized = false;
+
+function getEventModal(modalId) {
+  if (modalId) {
+    return document.getElementById(modalId);
+  }
+  return document.querySelector("[data-event-modal]");
+}
+
+function setEventModalState(modal, isOpen) {
+  if (!modal) {
+    return;
+  }
+  modal.classList.toggle("event-modal--open", isOpen);
+  modal.setAttribute("aria-hidden", isOpen ? "false" : "true");
+}
+
+function initEventModal() {
+  if (eventModalInitialized) {
+    return;
+  }
+  eventModalInitialized = true;
+
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-event-modal-open]");
+    if (trigger) {
+      const modalId = trigger.dataset.eventModalOpen;
+      setEventModalState(getEventModal(modalId), true);
+      return;
+    }
+
+    if (event.target.closest("[data-event-modal-close]")) {
+      const modal = event.target.closest("[data-event-modal]") || getEventModal();
+      setEventModalState(modal, false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setEventModalState(getEventModal(), false);
+    }
+  });
+}
+
+function initEventCreation() {
+  if (eventCreationInitialized) {
+    return;
+  }
+  eventCreationInitialized = true;
+
+  document.addEventListener("submit", async (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (!form.matches("[data-event-create]")) {
+      return;
+    }
+    event.preventDefault();
+    const authState = readAuthState();
+    const token = authState?.token;
+    if (!token) {
+      setFormFeedback(form, "Sign in to create events.", "error");
+      return;
+    }
+
+    const { payload, errors } = buildEventPayload(form, authState);
+    if (errors.length) {
+      setFormFeedback(form, errors[0], "error");
+      return;
+    }
+
+    try {
+      const created = await postJson("/api/events", payload, { token });
+      setFormFeedback(form, `Event "${created.title}" created successfully.`, "success");
+      form.reset();
+      const listTargetId = form.dataset.eventListTarget;
+      if (listTargetId) {
+        const listContainer = document.getElementById(listTargetId);
+        if (listContainer) {
+          await refreshEventList(listContainer, payload.calendarIds[0], token);
+        }
+      }
+      if (form.hasAttribute("data-event-modal-close-on-success")) {
+        setEventModalState(form.closest("[data-event-modal]"), false);
+      }
+    } catch (error) {
+      setFormFeedback(form, error.message, "error");
+    }
+  });
+}
+
+async function refreshEventList(container, calendarId, token) {
+  if (!container) {
+    return;
+  }
+  if (!calendarId) {
+    container.innerHTML = renderEventManagementList([]);
+    container.dataset.calendarId = "";
+    return;
+  }
+
+  try {
+    const response = await fetchJson(`/api/events?calendarId=${encodeURIComponent(calendarId)}`, { token });
+    const events = response.events || [];
+    container.dataset.calendarId = calendarId;
+    container.innerHTML = renderEventManagementList(events);
+  } catch (error) {
+    container.innerHTML = renderEmptyState({
+      title: "Event Management",
+      message: "Unable to load events right now."
+    });
+  }
+}
+
+function setEventListFeedback(container, message, tone = "info") {
+  if (!container) {
+    return;
+  }
+  const feedback =
+    container.querySelector("[data-event-list-feedback]") ||
+    container.parentElement?.querySelector("[data-event-list-feedback]");
+  if (!feedback) {
+    return;
+  }
+  feedback.textContent = message;
+  feedback.dataset.tone = tone;
+  feedback.classList.toggle("is-hidden", !message);
+}
+
+function initEventManagement() {
+  if (eventManagementInitialized) {
+    return;
+  }
+  eventManagementInitialized = true;
+
+  document.addEventListener("submit", async (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (!form.matches("[data-event-filter]")) {
+      return;
+    }
+    event.preventDefault();
+    const authState = readAuthState();
+    const token = authState?.token;
+    if (!token) {
+      setFormFeedback(form, "Sign in to load events.", "error");
+      return;
+    }
+    const formData = new FormData(form);
+    const calendarId = String(formData.get("calendarId") || "").trim();
+    if (!calendarId) {
+      setFormFeedback(form, "Calendar ID is required.", "error");
+      return;
+    }
+    const listTargetId = form.dataset.eventListTarget;
+    const listContainer = listTargetId ? document.getElementById(listTargetId) : null;
+    await refreshEventList(listContainer, calendarId, token);
+    setFormFeedback(form, "Events loaded.", "success");
+  });
+
+  document.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-event-delete]");
+    if (!deleteButton) {
+      return;
+    }
+    const authState = readAuthState();
+    const token = authState?.token;
+    if (!token) {
+      return;
+    }
+    const eventId = deleteButton.dataset.eventDelete;
+    if (!eventId) {
+      return;
+    }
+    const container = deleteButton.closest("[data-event-list]");
+    try {
+      const response = await fetch(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Unable to delete event.");
+      }
+      const calendarId = container?.dataset.calendarId;
+      if (container && calendarId) {
+        await refreshEventList(container, calendarId, token);
+      }
+      setEventListFeedback(container, "Event removed.", "success");
+    } catch (error) {
+      setEventListFeedback(container, error.message, "error");
+    }
+  });
+}
+
 function initCalendarControls() {
   const authState = readAuthState();
   const token = authState?.token;
@@ -1220,6 +1565,9 @@ async function init(selectorOverrides = {}) {
   await initProfileManagement();
   initCalendarControls();
   initSharingControls();
+  initEventModal();
+  initEventCreation();
+  initEventManagement();
 
   if (isSignedIn && (hasCalendarView || hasEventList)) {
     try {
@@ -1297,6 +1645,15 @@ if (typeof module !== "undefined") {
     updateAuthStatus,
     writeAuthState,
     getAccountHighlights,
+    buildEventPayload,
+    createEventId,
+    parseEventDateTime,
+    renderEventManagementList,
+    initEventCreation,
+    initEventManagement,
+    initEventModal,
+    refreshEventList,
+    setEventListFeedback,
     initProfileManagement,
     loadCalendarOverview,
     redirectToCalendar,

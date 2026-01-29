@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tylendar | Event Studio</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="hero hero--page">
+      <nav class="nav">
+        <a class="logo" href="/">Tylendar</a>
+        <div class="nav-links nav-links--compact">
+          <a href="/">Home</a>
+          <a href="/profiles">Profiles</a>
+          <a href="/dashboards">Dashboards</a>
+          <a href="/calendar">Calendar</a>
+          <a href="/events">Event Studio</a>
+          <a href="/access">Access</a>
+          <a href="/messageboard">MessageBoard</a>
+          <a href="/embed">Embed</a>
+          <a href="/sharing">Sharing</a>
+          <a href="/audit">Audit</a>
+          <a href="/roles">Roles</a>
+          <a href="/resilience">Resilience</a>
+          <a href="/developer">Developer</a>
+          <a href="/observability">Server Status</a>
+        </div>
+        <div class="nav-actions">
+          <span class="auth-status" data-auth-status>Not signed in</span>
+          <button class="ghost" data-auth-trigger="login">Log in</button>
+          <button class="primary" data-auth-trigger="register">Register</button>
+        </div>
+      </nav>
+      <section class="hero-banner">
+        <div>
+          <p class="eyebrow">Event Studio</p>
+          <h1>Full-screen event creation</h1>
+          <p class="subheading">
+            Build detailed events, schedule reminders, and manage the calendar lifecycle.
+          </p>
+          <div class="hero-actions">
+            <a class="primary" href="/calendar">Back to calendar</a>
+            <a class="secondary" href="/access">Manage access</a>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main class="page-content page-content--full">
+      <section class="section section--full">
+        <div class="section-heading">
+          <h2>Event Studio</h2>
+          <p>Design events with rich details and keep the schedule organized.</p>
+        </div>
+        <div class="event-studio">
+          <div class="event-studio__layout">
+            <div class="event-studio__panel">
+              <h3>Create a new event</h3>
+              <form class="form event-form" data-event-create data-event-list-target="event-management-list">
+                <div class="grid two">
+                  <label class="form-field">
+                    <span>Event title</span>
+                    <input type="text" name="title" placeholder="Executive sync" required />
+                  </label>
+                  <label class="form-field">
+                    <span>Calendar ID</span>
+                    <input type="text" name="calendarId" placeholder="cal-1234" required />
+                  </label>
+                  <label class="form-field">
+                    <span>Start date</span>
+                    <input type="date" name="startsDate" required />
+                  </label>
+                  <label class="form-field">
+                    <span>Start time</span>
+                    <input type="time" name="startsTime" required />
+                  </label>
+                  <label class="form-field">
+                    <span>End date</span>
+                    <input type="date" name="endsDate" required />
+                  </label>
+                  <label class="form-field">
+                    <span>End time</span>
+                    <input type="time" name="endsTime" required />
+                  </label>
+                </div>
+                <label class="form-field">
+                  <span>Time zone</span>
+                  <select name="timeZone">
+                    <option value="America/Los_Angeles">Pacific (US)</option>
+                    <option value="America/Denver">Mountain (US)</option>
+                    <option value="America/Chicago">Central (US)</option>
+                    <option value="America/New_York">Eastern (US)</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                </label>
+                <label class="form-field">
+                  <span>Location</span>
+                  <input type="text" name="location" placeholder="Onsite or remote" />
+                </label>
+                <label class="form-field">
+                  <span>Video conference link</span>
+                  <input type="url" name="videoLink" placeholder="https://meet.example.com/..." />
+                </label>
+                <label class="form-field">
+                  <span>Attendees</span>
+                  <input type="text" name="attendees" placeholder="alice@tylendar.com, bob@tylendar.com" />
+                </label>
+                <label class="form-field">
+                  <span>Reminder cadence</span>
+                  <select name="reminder">
+                    <option value="60">60 minutes before</option>
+                    <option value="30">30 minutes before</option>
+                    <option value="15">15 minutes before</option>
+                    <option value="5">5 minutes before</option>
+                  </select>
+                </label>
+                <label class="form-field">
+                  <span>Visibility</span>
+                  <select name="visibility">
+                    <option value="private">Private</option>
+                    <option value="team">Team</option>
+                    <option value="organization">Organization</option>
+                  </select>
+                </label>
+                <label class="form-field">
+                  <span>Description</span>
+                  <textarea name="description" rows="4" placeholder="Agenda, outcomes, and notes."></textarea>
+                </label>
+                <button class="primary" type="submit">Save event</button>
+                <div class="form-feedback is-hidden" data-form-feedback></div>
+              </form>
+            </div>
+            <div class="event-studio__sidebar">
+              <div class="event-studio__panel">
+                <h3>Editing highlights</h3>
+                <div class="event-highlight">
+                  <strong>Structured agenda</strong>
+                  <p class="muted">Capture the goals, speakers, and timing for the event.</p>
+                </div>
+                <div class="event-highlight">
+                  <strong>Smart reminders</strong>
+                  <p class="muted">Set reminders and visibility to keep attendees informed.</p>
+                </div>
+                <div class="event-highlight">
+                  <strong>Video-ready</strong>
+                  <p class="muted">Store conferencing links and dial-in info alongside details.</p>
+                </div>
+              </div>
+              <div class="event-studio__panel event-management">
+                <h3>Event management</h3>
+                <form class="form" data-event-filter data-event-list-target="event-management-list">
+                  <label class="form-field">
+                    <span>Calendar ID</span>
+                    <input type="text" name="calendarId" placeholder="cal-1234" required />
+                  </label>
+                  <button class="secondary" type="submit">Load events</button>
+                  <div class="form-feedback is-hidden" data-form-feedback></div>
+                </form>
+                <div class="form-feedback is-hidden" data-event-list-feedback></div>
+                <div class="event-management__list" id="event-management-list" data-event-list>
+                  <div class="empty-state">
+                    <h3>Event Management</h3>
+                    <p class="muted">Load a calendar to see events.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>
+        <strong>Tylendar</strong>
+        <p>Production calendar system.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#">Status</a>
+        <a href="#">Privacy</a>
+        <a href="#">Support</a>
+      </div>
+    </footer>
+
+    <div class="auth-modal" id="auth-modal" aria-hidden="true">
+      <div class="auth-modal__backdrop" data-auth-close></div>
+      <div class="auth-modal__card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <button class="auth-modal__close" type="button" data-auth-close aria-label="Close">
+          ×
+        </button>
+        <div class="auth-modal__tabs">
+          <button class="auth-tab auth-tab--active" type="button" data-auth-tab="login">Log in</button>
+          <button class="auth-tab" type="button" data-auth-tab="register">Register</button>
+        </div>
+        <div class="auth-panels">
+          <form class="auth-panel auth-panel--active" data-auth-panel="login">
+            <h3 id="auth-title">Welcome back</h3>
+            <label class="auth-field">
+              <span>Email</span>
+              <input type="email" name="email" required />
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <input type="password" name="password" required />
+            </label>
+            <button class="primary" type="submit">Log in</button>
+          </form>
+
+          <form class="auth-panel" data-auth-panel="register">
+            <h3>Create your account</h3>
+            <label class="auth-field">
+              <span>Name</span>
+              <input type="text" name="name" required />
+            </label>
+            <label class="auth-field">
+              <span>Email</span>
+              <input type="email" name="email" required />
+            </label>
+            <label class="auth-field">
+              <span>Password</span>
+              <input type="password" name="password" minlength="8" required />
+            </label>
+            <label class="auth-field">
+              <span>Organization ID</span>
+              <input type="text" name="organizationId" placeholder="Organization ID (optional)" />
+              <small>Optional. Leave blank if you are not joining an existing organization.</small>
+            </label>
+            <label class="auth-field">
+              <span>Role</span>
+              <input type="text" name="role" value="member" />
+            </label>
+            <button class="primary" type="submit">Register</button>
+          </form>
+        </div>
+        <div class="auth-feedback is-hidden" data-auth-feedback></div>
+      </div>
+    </div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
