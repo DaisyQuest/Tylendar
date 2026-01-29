@@ -133,6 +133,7 @@ describe("client rendering", () => {
     expect(html).toContain("Month Calendar View");
     expect(html).toContain("Event");
     expect(html).toContain("calendar-grid");
+    expect(html).toContain("Search events or people");
   });
 
   test("renderCalendarView handles empty days and all-day events", () => {
@@ -189,6 +190,8 @@ describe("client rendering", () => {
 
     expect(html).toContain("No featured events scheduled yet.");
     expect(html).toContain("calendar-pill--active");
+    expect(html).toContain("Block focus");
+    expect(html).toContain("Recharge");
   });
 
   test("renderCalendarView falls back to default label and summary", () => {
@@ -199,6 +202,31 @@ describe("client rendering", () => {
 
     expect(html).toContain("Calendar Calendar View");
     expect(html).toContain("Overview of scheduled moments and focus blocks.");
+  });
+
+  test("renderCalendarView uses custom calendar metadata when provided", () => {
+    const html = renderCalendarView({
+      view: "week",
+      label: "Week",
+      summary: "Tailored",
+      days: ["Mon"],
+      featuredEvents: [],
+      ownerName: "Avery",
+      timezone: "Pacific Time",
+      rangeLabel: "This month",
+      availability: "1 open slot",
+      inboxCount: 4,
+      quickActions: ["New event"],
+      focusAreas: ["Planning"],
+      syncStatus: "Synced yesterday"
+    });
+
+    expect(html).toContain("Owner: Avery");
+    expect(html).toContain("Pacific Time");
+    expect(html).toContain("Invites: 4");
+    expect(html).toContain("New event");
+    expect(html).toContain("Planning");
+    expect(html).toContain("Synced yesterday");
   });
 
   test("renderCalendarView handles events outside configured days and slots", () => {

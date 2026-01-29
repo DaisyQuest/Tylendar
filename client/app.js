@@ -193,6 +193,20 @@ function renderOrganizationStats(org) {
 function renderCalendarView(calendar) {
   const viewLabel = calendar.label || "Calendar";
   const summary = calendar.summary || "Overview of scheduled moments and focus blocks.";
+  const ownerLabel = calendar.ownerName || calendar.userName || "You";
+  const timezoneLabel = calendar.timezone || "Local time";
+  const rangeLabel = calendar.rangeLabel || "This week";
+  const availabilityLabel = calendar.availability || "3 open slots today";
+  const inboxCount = typeof calendar.inboxCount === "number" ? calendar.inboxCount : 0;
+  const quickActions =
+    Array.isArray(calendar.quickActions) && calendar.quickActions.length
+      ? calendar.quickActions
+      : ["New event", "Block focus", "Share availability"];
+  const focusAreas =
+    Array.isArray(calendar.focusAreas) && calendar.focusAreas.length
+      ? calendar.focusAreas
+      : ["Deep work", "Team syncs", "Recharge"];
+  const syncLabel = calendar.syncStatus || "Synced moments ago";
   const days =
     Array.isArray(calendar.days) && calendar.days.length
       ? calendar.days
@@ -295,15 +309,40 @@ function renderCalendarView(calendar) {
         })
         .join("")
     : `<li class="muted">No featured events scheduled yet.</li>`;
+  const actionButtons = quickActions
+    .map(
+      (action) => `
+        <button class="calendar-action" type="button">${action}</button>
+      `
+    )
+    .join("");
+  const focusList = focusAreas.map((area) => `<li>${area}</li>`).join("");
 
   return `
     <div class="calendar-view">
       <div class="calendar-view__header">
         <div>
+          <p class="calendar-kicker">${rangeLabel} · ${timezoneLabel}</p>
           <h3>${viewLabel} Calendar View</h3>
           <p class="muted">${summary}</p>
+          <div class="calendar-meta">
+            <span>Owner: ${ownerLabel}</span>
+            <span>Availability: ${availabilityLabel}</span>
+            <span>Invites: ${inboxCount}</span>
+          </div>
         </div>
         <div class="calendar-view__controls">
+          <div class="calendar-control">
+            <span class="calendar-control__label">Quick actions</span>
+            <div class="calendar-control__actions">${actionButtons}</div>
+          </div>
+          <div class="calendar-control">
+            <span class="calendar-control__label">Search & filters</span>
+            <div class="calendar-search">
+              <input type="search" placeholder="Search events or people" />
+              <button class="ghost calendar-search__button" type="button">Filters</button>
+            </div>
+          </div>
           <div class="calendar-control">
             <span class="calendar-control__label">View</span>
             <div class="calendar-control__pills">${viewPills}</div>
@@ -311,6 +350,21 @@ function renderCalendarView(calendar) {
           <div class="calendar-control">
             <span class="calendar-control__label">Focus days</span>
             <div class="calendar-control__pills">${dayBadges}</div>
+          </div>
+        </div>
+      </div>
+      <div class="calendar-spotlight">
+        <div class="calendar-panel">
+          <h4>Focus areas</h4>
+          <p class="muted">Balance the moments that matter most.</p>
+          <ul class="list">${focusList}</ul>
+        </div>
+        <div class="calendar-panel">
+          <h4>Availability pulse</h4>
+          <p class="muted">${availabilityLabel}</p>
+          <div class="calendar-panel__meta">
+            <span>${timezoneLabel}</span>
+            <span>${syncLabel}</span>
           </div>
         </div>
       </div>

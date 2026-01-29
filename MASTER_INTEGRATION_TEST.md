@@ -46,6 +46,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Month/2-week/week/day rendering with event correctness.
    - Verify navigation between views preserves selected date and filters.
    - Confirm the calendar grid renders time slots, all-day row, and focus-day counts with an agenda sidebar.
+   - Validate the personalized calendar header shows owner, availability, search/filter tools, and quick actions.
+   - Confirm focus area panels and sync/time zone context render in the calendar spotlight section.
 8. **Event List Views**
    - Year/n-month/month/week/day filtering.
    - Confirm list view filtering respects calendar permissions.
@@ -78,6 +80,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 15. **Home Page Experience**
    - Validate the simplified hero banner and login/register actions on the home page.
     - Verify the login/register modal opens from the home navigation and captures org/role inputs.
+    - Confirm the home page feature directory links to user-specific views and key feature sections.
     - Confirm the Home Details page renders highlights, dashboards, calendar previews, access, and MessageBoard sections.
     - Verify the Home Details feature preview layout uses the two-column grid at desktop widths to reduce vertical scrolling.
 16. **Merge & Dependency Integrity**
