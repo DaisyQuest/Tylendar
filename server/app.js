@@ -97,6 +97,7 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   }));
   app.use("/api/events", requireFeature("event", flags), createEventRouter({
     eventsRepository: repos.events,
+    calendarPermissionsRepository: repos.calendarPermissions,
     permissionGuard,
     auditService: audit
   }));

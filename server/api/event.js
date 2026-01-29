@@ -3,8 +3,10 @@ const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { PERMISSIONS } = require("../models/calendarPermissions");
 
-function createEventRouter({ eventsRepository, permissionGuard, auditService }) {
+function createEventRouter({ eventsRepository, calendarPermissionsRepository, permissionGuard, auditService }) {
   const router = express.Router();
+  const viewPermissions = new Set([PERMISSIONS[0], PERMISSIONS[1], PERMISSIONS[2]]);
+  const hasViewPermission = (permissions = []) => permissions.some((permission) => viewPermissions.has(permission));
 
   router.get("/:eventId", requireAuth, asyncHandler(async (req, res) => {
     const event = await eventsRepository.getById(req.params.eventId);
@@ -15,7 +17,22 @@ function createEventRouter({ eventsRepository, permissionGuard, auditService }) 
   }));
 
   router.get("/", requireAuth, asyncHandler(async (req, res) => {
-    const events = await eventsRepository.list(req.query.calendarId ? { calendarIds: req.query.calendarId } : {});
+    const calendarId = req.query.calendarId;
+    if (calendarId) {
+      const entries = await calendarPermissionsRepository.list({ calendarId, userId: req.user.id });
+      const permissions = entries.flatMap((entry) => entry.permissions || []);
+      if (!hasViewPermission(permissions)) {
+        await auditService.record({
+          action: "permission_check",
+          actorId: req.user.id,
+          targetId: calendarId,
+          status: "denied",
+          details: "Missing permission: View Calendar"
+        });
+        return res.status(403).json({ error: "Permission denied" });
+      }
+    }
+    const events = await eventsRepository.list(calendarId ? { calendarIds: calendarId } : {});
     return res.json({ events });
   }));
 

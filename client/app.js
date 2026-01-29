@@ -278,6 +278,55 @@ function renderOrganizationStats(org) {
   `;
 }
 
+function formatEventDateLabel(isoDate) {
+  if (!isoDate) {
+    return "Unscheduled";
+  }
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return "Unscheduled";
+  }
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function getMonthWindow(referenceDate) {
+  const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+  const safeDate = Number.isNaN(baseDate.getTime()) ? new Date() : baseDate;
+  const month = safeDate.getMonth();
+  const year = safeDate.getFullYear();
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay();
+  const startDate = new Date(year, month, 1 - startOffset);
+  const days = [];
+
+  for (let i = 0; i < 42; i += 1) {
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
+    days.push({
+      key: day.toISOString().slice(0, 10),
+      date: day,
+      label: day.getDate(),
+      isCurrentMonth: day.getMonth() === month
+    });
+  }
+
+  return {
+    label: safeDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    days
+  };
+}
+
+function groupEventsByDate(events = []) {
+  return events.reduce((acc, event) => {
+    const key = event.startsAt ? new Date(event.startsAt).toISOString().slice(0, 10) : "unscheduled";
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(event);
+    return acc;
+  }, {});
+}
+
 function renderCalendarView(calendar = {}) {
   const label = calendar.label || "Calendar";
   const summary = calendar.summary || "No calendar data available.";
@@ -286,20 +335,95 @@ function renderCalendarView(calendar = {}) {
     : Array.isArray(calendar.featuredEvents)
       ? calendar.featuredEvents
       : [];
+  const monthWindow = getMonthWindow(calendar.referenceDate);
+  const eventsByDate = groupEventsByDate(events);
+  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const items = events.length
-    ? events
-        .map((event) => {
-          const dateLabel = event.day || event.startsAt || "Unscheduled";
-          return `<li><strong>${event.title}</strong> · ${dateLabel}</li>`;
-        })
-        .join("")
-    : `<li class="muted">No events scheduled.</li>`;
+  const monthCells = monthWindow.days
+    .map((day) => {
+      const dayEvents = eventsByDate[day.key] || [];
+      const visibleEvents = dayEvents.slice(0, 3);
+      const overflow = dayEvents.length - visibleEvents.length;
+      return `
+        <div class="calendar-month__cell${day.isCurrentMonth ? "" : " calendar-month__cell--outside"}">
+          <div class="calendar-month__date">${day.label}</div>
+          <ul class="calendar-month__events">
+            ${visibleEvents
+              .map(
+                (event) => `
+                  <li class="calendar-month__event">
+                    <span class="calendar-month__event-title">${event.title}</span>
+                    <span class="calendar-month__event-time">${formatEventDateLabel(event.startsAt)}</span>
+                  </li>
+                `
+              )
+              .join("")}
+            ${overflow > 0 ? `<li class="calendar-month__more">+${overflow} more</li>` : ""}
+          </ul>
+        </div>
+      `;
+    })
+    .join("");
+
+  const agendaEvents = events
+    .slice()
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+    .slice(0, 6)
+    .map(
+      (event) => `
+        <li>
+          <strong>${event.title}</strong>
+          <span class="muted">${formatEventDateLabel(event.startsAt)}</span>
+        </li>
+      `
+    )
+    .join("");
+
+  const agendaContent = agendaEvents || `<li class="muted">No events scheduled yet.</li>`;
 
   return `
-    <h3>${label}</h3>
-    <p class="muted">${summary}</p>
-    <ul class="list">${items}</ul>
+    <div class="calendar-view calendar-view--month">
+      <div class="calendar-view__header">
+        <div>
+          <p class="calendar-kicker">Calendar</p>
+          <h3>${label}</h3>
+          <p class="muted">${summary}</p>
+          <div class="calendar-meta">
+            <span>${monthWindow.label}</span>
+            <span>${events.length} events</span>
+          </div>
+        </div>
+        <div class="calendar-view__controls">
+          <div>
+            <span class="calendar-control__label">View</span>
+            <div class="calendar-control__pills">
+              <span class="calendar-pill calendar-pill--active">Month</span>
+              <span class="calendar-pill">Week</span>
+              <span class="calendar-pill">Day</span>
+            </div>
+          </div>
+          <div class="calendar-control__actions">
+            <button class="calendar-action" type="button">New event</button>
+            <button class="calendar-action" type="button">Share</button>
+          </div>
+        </div>
+      </div>
+      <div class="calendar-view__body">
+        <div class="calendar-month">
+          <div class="calendar-month__weekdays">
+            ${weekdayLabels.map((labelText) => `<span>${labelText}</span>`).join("")}
+          </div>
+          <div class="calendar-month__grid">
+            ${monthCells}
+          </div>
+        </div>
+        <aside class="calendar-agenda">
+          <h4>Upcoming events</h4>
+          <p>Stay on top of what is scheduled across your calendars.</p>
+          <ul class="list">${agendaContent}</ul>
+        </aside>
+      </div>
+    </div>
   `;
 }
 
@@ -317,7 +441,10 @@ function renderEventList(view = { title: "Events", items: [] }) {
     <h3>${view.title}</h3>
     <ul class="list">
       ${list
-        .map((event) => `<li>${event.title}${event.day ? ` · ${event.day}` : ""}</li>`)
+        .map((event) => {
+          const dateLabel = event.day || formatEventDateLabel(event.startsAt);
+          return `<li>${event.title} · ${dateLabel}</li>`;
+        })
         .join("")}
     </ul>
   `;
@@ -615,8 +742,12 @@ function renderOperationalAlerts(payload = { alerts: [] }) {
   `;
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
+async function fetchJson(url, { token } = {}) {
+  const response = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
   if (!response.ok) {
     throw new Error(`Failed to load ${url}`);
   }
@@ -858,6 +989,40 @@ function initSharingControls() {
   });
 }
 
+async function loadCalendarOverview(authState) {
+  const token = authState?.token;
+  if (!token) {
+    return null;
+  }
+  const calendarsResponse = await fetchJson("/api/calendars", { token });
+  const calendars = calendarsResponse.calendars || [];
+  const primaryCalendar = calendars[0] || null;
+  let events = [];
+  if (primaryCalendar) {
+    const eventsResponse = await fetchJson(`/api/events?calendarId=${encodeURIComponent(primaryCalendar.id)}`, { token });
+    events = eventsResponse.events || [];
+  }
+  return { calendars, primaryCalendar, events };
+}
+
+function redirectToCalendar(location = typeof window !== "undefined" ? window.location : null) {
+  const windowLocation = typeof window !== "undefined" ? window.location : null;
+  const isDefaultLocation = location && windowLocation && location === windowLocation;
+  const isJsdom = isDefaultLocation && typeof navigator !== "undefined" && navigator.userAgent?.includes("jsdom");
+  if (isJsdom) {
+    return false;
+  }
+  if (!location || typeof location.assign !== "function") {
+    return false;
+  }
+  try {
+    location.assign("/calendar");
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 function initAuthUI({ storage } = {}) {
   const modal = document.getElementById("auth-modal");
   const triggers = document.querySelectorAll("[data-auth-trigger]");
@@ -925,6 +1090,9 @@ function initAuthUI({ storage } = {}) {
         setAuthFeedback(`Signed in as ${response.user?.name || response.user?.email}`, "success");
         closeModal();
         form.reset();
+        if (mode === "register") {
+          redirectToCalendar();
+        }
       } catch (error) {
         setAuthFeedback(error.message, "error");
       }
@@ -948,6 +1116,8 @@ async function init(selectorOverrides = {}) {
   const accountHighlights = getAccountHighlights(authState?.user);
 
   const signInMessage = "Sign in to view this section.";
+  const hasCalendarView = Boolean(document.getElementById(selectors.calendarView));
+  const hasEventList = Boolean(document.getElementById(selectors.eventList));
 
   const setSection = (selector, html) => {
     const element = document.getElementById(selector);
@@ -971,8 +1141,12 @@ async function init(selectorOverrides = {}) {
     setSection(selectors.homeHighlights, renderHighlights(accountHighlights));
     setSection(selectors.userDashboard, renderDashboard("User Dashboard", { items: [] }));
     setSection(selectors.orgDashboard, renderOrganizationStats(orgPayload));
-    setSection(selectors.calendarView, renderCalendarView({ label: "Calendar", summary: "No calendars available.", events: [] }));
-    setSection(selectors.eventList, renderEventList({ title: "Events", items: [] }));
+    if (hasCalendarView) {
+      setSection(selectors.calendarView, renderCalendarView({ label: "Calendar", summary: "Loading your calendar...", events: [] }));
+    }
+    if (hasEventList) {
+      setSection(selectors.eventList, renderEventList({ title: "Events", items: [] }));
+    }
     setSection(selectors.accessMatrix, renderAccessMatrix([]));
     setSection(selectors.messageBoard, renderMessageBoard({ eventId: "", entries: [] }));
     setSection(selectors.embedWidget, renderEmbedWidget(null));
@@ -995,8 +1169,12 @@ async function init(selectorOverrides = {}) {
     setSection(selectors.homeHighlights, renderHighlights([]));
     setSection(selectors.userDashboard, renderEmptyState({ title: "User Dashboard", message: signInMessage }));
     setSection(selectors.orgDashboard, renderEmptyState({ title: "Organization Dashboard", message: signInMessage }));
-    setSection(selectors.calendarView, renderEmptyState({ title: "Calendar", message: signInMessage }));
-    setSection(selectors.eventList, renderEmptyState({ title: "Events", message: signInMessage }));
+    if (hasCalendarView) {
+      setSection(selectors.calendarView, renderEmptyState({ title: "Calendar", message: signInMessage }));
+    }
+    if (hasEventList) {
+      setSection(selectors.eventList, renderEmptyState({ title: "Events", message: signInMessage }));
+    }
     setSection(selectors.accessMatrix, renderEmptyState({ title: "Access", message: signInMessage }));
     setSection(selectors.messageBoard, renderEmptyState({ title: "MessageBoard", message: signInMessage }));
     setSection(selectors.embedWidget, renderEmptyState({ title: "Embed Widget", message: signInMessage }));
@@ -1042,6 +1220,35 @@ async function init(selectorOverrides = {}) {
   await initProfileManagement();
   initCalendarControls();
   initSharingControls();
+
+  if (isSignedIn && (hasCalendarView || hasEventList)) {
+    try {
+      const overview = await loadCalendarOverview(authState);
+      if (overview && overview.primaryCalendar) {
+        const { primaryCalendar, events, calendars } = overview;
+        setSection(
+          selectors.calendarView,
+          renderCalendarView({
+            label: primaryCalendar.name,
+            summary: `${calendars.length} calendar${calendars.length === 1 ? "" : "s"} connected.`,
+            events,
+            referenceDate: new Date().toISOString()
+          })
+        );
+        setSection(selectors.eventList, renderEventList({ title: "Upcoming events", items: events }));
+      } else if (overview) {
+        setSection(
+          selectors.calendarView,
+          renderCalendarView({ label: "Calendar", summary: "No calendars available yet.", events: [] })
+        );
+      }
+    } catch (error) {
+      setSection(
+        selectors.calendarView,
+        renderCalendarView({ label: "Calendar", summary: "Unable to load your calendar right now.", events: [] })
+      );
+    }
+  }
 
   return { hydrated: true };
 }
@@ -1090,6 +1297,9 @@ if (typeof module !== "undefined") {
     updateAuthStatus,
     writeAuthState,
     getAccountHighlights,
-    initProfileManagement
+    initProfileManagement,
+    loadCalendarOverview,
+    redirectToCalendar,
+    updateAccountSections
   };
 }
