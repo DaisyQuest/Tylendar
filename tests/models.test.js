@@ -499,6 +499,15 @@ describe("domain models", () => {
     });
     expect(role.description).toBe("");
 
+    const roleWithDescription = createRole({
+      id: "role-1b",
+      orgId: "org-1",
+      name: "Viewer",
+      permissions: ["View Calendar"],
+      description: "Read-only access"
+    });
+    expect(roleWithDescription.description).toBe("Read-only access");
+
     const invalidRole = validateRole({
       id: "role-2",
       orgId: "org-1",
@@ -523,6 +532,13 @@ describe("domain models", () => {
       permissions: "View Calendar"
     });
     expect(invalidPermissions.valid).toBe(false);
+
+    const missingPermissions = validateRole({
+      id: "role-5",
+      orgId: "org-1",
+      name: "Missing"
+    });
+    expect(missingPermissions.valid).toBe(false);
   });
 
   test("createRoleAssignment enforces required fields", () => {
@@ -554,5 +570,15 @@ describe("domain models", () => {
       assignedBy: "user-2"
     });
     expect(missingAssignedAt.valid).toBe(false);
+
+    const validAssignment = validateRoleAssignment({
+      id: "assign-4",
+      orgId: "org-1",
+      roleId: "role-1",
+      userId: "user-1",
+      assignedBy: "user-2",
+      assignedAt: "2024-01-01T00:00:00.000Z"
+    });
+    expect(validAssignment.valid).toBe(true);
   });
 });

@@ -31,18 +31,44 @@ const {
 } = require("../client/app");
 
 describe("client rendering", () => {
-  test("renderProfile includes notifications", () => {
+  test("renderProfile shows empty state when missing", () => {
+    const html = renderProfile(null);
+
+    expect(html).toContain("Sign in to view your profile details");
+  });
+
+  test("renderProfile includes account details", () => {
     const html = renderProfile({
       name: "Test User",
-      title: "Planner",
-      role: "Owner",
-      location: "Remote",
-      notifications: ["Note"],
-      lastActive: "Now"
+      email: "user@example.com",
+      organizationId: "org-1",
+      role: "admin"
     });
 
     expect(html).toContain("Test User");
-    expect(html).toContain("Note");
+    expect(html).toContain("Email");
+    expect(html).toContain("org-1");
+  });
+
+  test("renderProfile falls back to Account label when name is missing", () => {
+    const html = renderProfile({
+      email: "user@example.com"
+    });
+
+    expect(html).toContain("Account");
+  });
+
+  test("renderProfile falls back to default detail values", () => {
+    const html = renderProfile({
+      name: "Fallback User",
+      email: "",
+      organizationId: "",
+      role: ""
+    });
+
+    expect(html).toContain("Email: —");
+    expect(html).toContain("Organization: None");
+    expect(html).toContain("Role: member");
   });
 
   test("renderAuthStatus returns signed-out label", () => {
@@ -67,192 +93,157 @@ describe("client rendering", () => {
     expect(htmlWithFallback).toContain("Signed in as Account");
   });
 
-  test("renderHighlights renders items", () => {
+  test("renderHighlights renders empty state without items", () => {
+    const html = renderHighlights([]);
+
+    expect(html).toContain("No account details available yet");
+  });
+
+  test("renderHighlights uses defaults when highlights are missing", () => {
+    const html = renderHighlights();
+
+    expect(html).toContain("No account details available yet");
+  });
+
+  test("renderHighlights renders account summary items", () => {
     const html = renderHighlights([
-      { title: "Title", description: "Description" }
+      { title: "Email", description: "user@example.com" }
     ]);
 
-    expect(html).toContain("Home Page Highlights");
-    expect(html).toContain("Description");
+    expect(html).toContain("Account Summary");
+    expect(html).toContain("user@example.com");
   });
 
-  test("renderDashboard handles missing milestones", () => {
-    const html = renderDashboard("User", { focusLabel: "Focus", highlights: ["One"] });
+  test("renderDashboard renders empty state when no items", () => {
+    const html = renderDashboard("User Dashboard", { items: [] });
 
-    expect(html).toContain("User");
-    expect(html).toContain("Focus");
+    expect(html).toContain("No dashboard data is available yet");
   });
 
-  test("renderDashboard renders milestones when provided", () => {
-    const html = renderDashboard("User", {
-      focusLabel: "Focus",
-      highlights: ["One"],
-      milestones: ["Plan"]
-    });
+  test("renderDashboard handles missing summary payload", () => {
+    const html = renderDashboard("User Dashboard");
 
-    expect(html).toContain("Plan");
+    expect(html).toContain("No dashboard data is available yet");
   });
 
-  test("renderDashboard falls back to organization pulse and departments", () => {
-    const html = renderDashboard("Org", {
-      departments: ["Ops", "People"]
-    });
+  test("renderDashboard renders provided items", () => {
+    const html = renderDashboard("User Dashboard", { items: ["One"] });
 
-    expect(html).toContain("Community pulse");
-    expect(html).toContain("People");
+    expect(html).toContain("User Dashboard");
+    expect(html).toContain("One");
   });
 
-  test("renderDashboard handles missing highlights and departments", () => {
-    const html = renderDashboard("Org", {});
+  test("renderDashboard uses highlights when items are missing", () => {
+    const html = renderDashboard("User Dashboard", { highlights: ["Note"] });
 
-    expect(html).toContain("Community pulse");
+    expect(html).toContain("Note");
   });
 
-  test("renderOrganizationStats includes departments", () => {
+  test("renderDashboard uses departments when highlights are missing", () => {
+    const html = renderDashboard("Org Dashboard", { departments: ["Ops"] });
+
+    expect(html).toContain("Ops");
+  });
+
+  test("renderOrganizationStats handles missing organization", () => {
+    const html = renderOrganizationStats(null);
+
+    expect(html).toContain("No organization data is available yet");
+  });
+
+  test("renderOrganizationStats includes stats", () => {
     const html = renderOrganizationStats({
       name: "Org",
       activeCalendars: 1,
       upcomingEvents: 2,
-      complianceScore: "99%",
-      departments: ["Ops"]
+      memberCount: 5
     });
 
     expect(html).toContain("Org Dashboard");
-    expect(html).toContain("Ops");
+    expect(html).toContain("Active calendars");
   });
 
-  test("renderCalendarView includes summary and grid", () => {
-    const html = renderCalendarView({
-      view: "month",
-      label: "Month",
-      summary: "Month view",
-      days: ["Mon"],
-      featuredEvents: [{ title: "Event", day: "Mon", time: "9" }]
+  test("renderOrganizationStats uses defaults when counts are missing", () => {
+    const html = renderOrganizationStats({
+      name: "Org"
     });
 
-    expect(html).toContain("Month Calendar View");
+    expect(html).toContain("Active calendars: 0");
+    expect(html).toContain("Upcoming events: 0");
+    expect(html).toContain("Members: 0");
+  });
+
+  test("renderCalendarView shows empty message when no events", () => {
+    const html = renderCalendarView({ label: "Calendar", summary: "Summary", events: [] });
+
+    expect(html).toContain("No events scheduled");
+  });
+
+  test("renderCalendarView uses defaults when calendar is missing", () => {
+    const html = renderCalendarView();
+
+    expect(html).toContain("Calendar");
+    expect(html).toContain("No calendar data available.");
+  });
+
+  test("renderCalendarView lists events when provided", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      events: [{ title: "Event", day: "Mon" }]
+    });
+
     expect(html).toContain("Event");
-    expect(html).toContain("calendar-grid");
-    expect(html).toContain("Search events or people");
-  });
-
-  test("renderCalendarView handles empty days and all-day events", () => {
-    const html = renderCalendarView({
-      view: "day",
-      label: "Day",
-      summary: "Day view",
-      days: [],
-      featuredEvents: [
-        { title: "No time", day: "Mon", calendar: "Team", owner: "Taylor" }
-      ]
-    });
-
-    expect(html).toContain("All day");
-    expect(html).toContain("No time");
     expect(html).toContain("Mon");
   });
 
-  test("renderCalendarView falls back when calendar metadata is missing", () => {
+  test("renderCalendarView uses startsAt when day is missing", () => {
     const html = renderCalendarView({
-      view: "week",
-      label: "Week",
-      summary: "Week view",
-      days: ["Tue"],
-      featuredEvents: [{ title: "Open slot", day: "Tue", time: "10:00 AM" }]
+      label: "Calendar",
+      summary: "Summary",
+      events: [{ title: "Event", startsAt: "2024-01-01" }]
     });
 
-    expect(html).toContain("Shared · Unassigned");
+    expect(html).toContain("2024-01-01");
   });
 
-  test("renderCalendarView sorts agenda items by day and time", () => {
+  test("renderCalendarView falls back to unscheduled label", () => {
     const html = renderCalendarView({
-      view: "month",
-      label: "Schedule",
-      summary: "Agenda order",
-      days: ["Mon", "Tue"],
-      featuredEvents: [
-        { title: "Later", day: "Tue", time: "3:00 PM", calendar: "Cal", owner: "A" },
-        { title: "Mid", day: "Mon", time: "1:00 PM", calendar: "Cal", owner: "A" },
-        { title: "Early", day: "Mon", time: "8:00 AM", calendar: "Cal", owner: "A" }
-      ]
+      label: "Calendar",
+      summary: "Summary",
+      events: [{ title: "Event" }]
     });
 
-    expect(html.indexOf("Early")).toBeLessThan(html.indexOf("Mid"));
-    expect(html.indexOf("Mid")).toBeLessThan(html.indexOf("Later"));
+    expect(html).toContain("Unscheduled");
   });
 
-  test("renderCalendarView handles missing featured events list", () => {
+  test("renderCalendarView falls back to featured events", () => {
     const html = renderCalendarView({
-      view: "custom",
-      label: "Week",
-      summary: "Empty agenda"
+      label: "Calendar",
+      summary: "Summary",
+      featuredEvents: [{ title: "Featured", day: "Tue" }]
     });
 
-    expect(html).toContain("No featured events scheduled yet.");
-    expect(html).toContain("calendar-pill--active");
-    expect(html).toContain("Block focus");
-    expect(html).toContain("Recharge");
-  });
-
-  test("renderCalendarView falls back to default label and summary", () => {
-    const html = renderCalendarView({
-      days: ["Mon"],
-      featuredEvents: []
-    });
-
-    expect(html).toContain("Calendar Calendar View");
-    expect(html).toContain("Overview of scheduled moments and focus blocks.");
-  });
-
-  test("renderCalendarView uses custom calendar metadata when provided", () => {
-    const html = renderCalendarView({
-      view: "week",
-      label: "Week",
-      summary: "Tailored",
-      days: ["Mon"],
-      featuredEvents: [],
-      ownerName: "Avery",
-      timezone: "Pacific Time",
-      rangeLabel: "This month",
-      availability: "1 open slot",
-      inboxCount: 4,
-      quickActions: ["New event"],
-      focusAreas: ["Planning"],
-      syncStatus: "Synced yesterday"
-    });
-
-    expect(html).toContain("Owner: Avery");
-    expect(html).toContain("Pacific Time");
-    expect(html).toContain("Invites: 4");
-    expect(html).toContain("New event");
-    expect(html).toContain("Planning");
-    expect(html).toContain("Synced yesterday");
-  });
-
-  test("renderCalendarView handles events outside configured days and slots", () => {
-    const html = renderCalendarView({
-      label: "Month",
-      summary: "Expanded",
-      days: ["Mon"],
-      featuredEvents: [
-        { title: "Overflow", day: "Sun", time: "7:00 AM", calendar: "Cal", owner: "A" },
-        { title: "Overflow Two", day: "Sun", time: "6:00 AM", calendar: "Cal", owner: "A" }
-      ]
-    });
-
-    expect(html).toContain("Overflow");
-    expect(html).toContain("Sun · 7:00 AM");
+    expect(html).toContain("Featured");
+    expect(html).toContain("Tue");
   });
 
   test("renderEventList handles empty items", () => {
-    const html = renderEventList({ title: "day", items: [] });
+    const html = renderEventList({ title: "Events", items: [] });
 
+    expect(html).toContain("No events scheduled");
+  });
+
+  test("renderEventList uses defaults when view is missing", () => {
+    const html = renderEventList();
+
+    expect(html).toContain("Events");
     expect(html).toContain("No events scheduled");
   });
 
   test("renderEventList renders item days when provided", () => {
     const html = renderEventList({
-      title: "week",
+      title: "Events",
       items: [
         { title: "Event A", day: "Mon" },
         { title: "Event B", day: "" }
@@ -263,127 +254,189 @@ describe("client rendering", () => {
     expect(html).toContain("Event B");
   });
 
-  test("renderAccessMatrix includes permissions", () => {
-    const html = renderAccessMatrix([
+  test("renderAccessMatrix handles empty and entries", () => {
+    const emptyHtml = renderAccessMatrix([]);
+    const defaultHtml = renderAccessMatrix();
+    const filledHtml = renderAccessMatrix([
       { user: "A", calendar: "Cal", permissions: ["View"] }
     ]);
 
-    expect(html).toContain("Access Assignments");
-    expect(html).toContain("View");
+    expect(emptyHtml).toContain("No access entries");
+    expect(defaultHtml).toContain("No access entries");
+    expect(filledHtml).toContain("Access Assignments");
+    expect(filledHtml).toContain("View");
   });
 
-  test("renderMessageBoard includes messages", () => {
-    const html = renderMessageBoard({
+  test("renderMessageBoard handles empty and messages", () => {
+    const emptyHtml = renderMessageBoard({ eventId: "evt", entries: [] });
+    const defaultHtml = renderMessageBoard();
+    const filledHtml = renderMessageBoard({
       eventId: "evt-1",
       entries: [{ author: "A", message: "Hello", time: "now" }]
     });
 
-    expect(html).toContain("MessageBoard");
-    expect(html).toContain("Hello");
+    expect(emptyHtml).toContain("No event comments available");
+    expect(defaultHtml).toContain("No event comments available");
+    expect(filledHtml).toContain("Hello");
   });
 
-  test("renderEmbedWidget includes snippet", () => {
-    const html = renderEmbedWidget({
+  test("renderEmbedWidget handles empty and snippet", () => {
+    const emptyHtml = renderEmbedWidget(null);
+    const filledHtml = renderEmbedWidget({
       title: "Embed",
-      theme: "Glow",
-      visibility: "Public",
-      endpoint: "/api",
       sampleSnippet: "<iframe />"
     });
-
-    expect(html).toContain("Embed Widget");
-    expect(html).toContain("<iframe");
-  });
-
-  test("renderSharingOptions lists channels", () => {
-    const html = renderSharingOptions({
-      options: [
-        { channel: "Social", description: "Share", link: "link" }
-      ]
+    const fallbackHtml = renderEmbedWidget({
+      title: "Embed"
     });
 
-    expect(html).toContain("Social Sharing");
-    expect(html).toContain("Share");
+    expect(emptyHtml).toContain("No public embed is available");
+    expect(filledHtml).toContain("<iframe");
+    expect(fallbackHtml).toContain("Embed snippet unavailable");
   });
 
-  test("renderSharingOptions renders formats when provided", () => {
-    const html = renderSharingOptions({
+  test("renderSharingOptions handles empty and formats", () => {
+    const emptyHtml = renderSharingOptions({ options: [] });
+    const defaultHtml = renderSharingOptions();
+    const filledHtml = renderSharingOptions({
       options: [
         { channel: "Export", description: "Export", formats: ["ICS", "CSV"] }
       ]
     });
+    const linkHtml = renderSharingOptions({
+      options: [
+        { channel: "Share link", description: "Share", link: "https://example.com" }
+      ]
+    });
+    const noExtrasHtml = renderSharingOptions({
+      options: [
+        { channel: "Internal", description: "Internal use only" }
+      ]
+    });
 
-    expect(html).toContain("Formats: ICS, CSV");
+    expect(emptyHtml).toContain("No sharing options configured");
+    expect(defaultHtml).toContain("No sharing options configured");
+    expect(filledHtml).toContain("Formats: ICS, CSV");
+    expect(linkHtml).toContain("https://example.com");
+    expect(noExtrasHtml).toContain("Internal use only");
   });
 
-  test("renderAuditHistory lists entries", () => {
-    const html = renderAuditHistory({
+  test("renderAuditHistory handles empty and entries", () => {
+    const emptyHtml = renderAuditHistory({ entries: [] });
+    const defaultHtml = renderAuditHistory();
+    const filledHtml = renderAuditHistory({
       entries: [
         { action: "login", summary: "Logged in", actor: "A", status: "ok", occurredAt: "now" }
       ]
     });
 
-    expect(html).toContain("Audit History");
-    expect(html).toContain("Logged in");
+    expect(emptyHtml).toContain("No audit activity recorded");
+    expect(defaultHtml).toContain("No audit activity recorded");
+    expect(filledHtml).toContain("Logged in");
   });
 
-  test("renderRoleManagement renders roles and assignments", () => {
-    const html = renderRoleManagement({
-      roles: [
-        { name: "Admin", summary: "Full", permissions: ["All"] }
-      ],
-      assignments: [
-        { user: "A", roleId: "role-1", assignedBy: "B", assignedAt: "today" }
-      ]
+  test("renderRoleManagement handles empty and content", () => {
+    const emptyHtml = renderRoleManagement({ roles: [], assignments: [] });
+    const defaultHtml = renderRoleManagement();
+    const filledHtml = renderRoleManagement({
+      roles: [{ name: "Admin", summary: "Full", permissions: ["All"] }],
+      assignments: [{ user: "A", roleId: "role-1", assignedBy: "B", assignedAt: "today" }]
+    });
+    const minimalHtml = renderRoleManagement({
+      roles: [{ name: "Viewer" }],
+      assignments: []
     });
 
-    expect(html).toContain("Role Management");
-    expect(html).toContain("Admin");
-    expect(html).toContain("role-1");
+    expect(emptyHtml).toContain("No roles or assignments configured");
+    expect(defaultHtml).toContain("No roles or assignments configured");
+    expect(filledHtml).toContain("Admin");
+    expect(filledHtml).toContain("role-1");
+    expect(minimalHtml).toContain("Viewer");
   });
 
-  test("renderFaultTolerance lists patterns", () => {
-    const html = renderFaultTolerance({
-      snapshots: [
-        { pattern: "Retries", detail: "ok", status: "Healthy" }
-      ]
+  test("renderFaultTolerance handles empty and entries", () => {
+    const emptyHtml = renderFaultTolerance({ snapshots: [] });
+    const defaultHtml = renderFaultTolerance();
+    const filledHtml = renderFaultTolerance({
+      snapshots: [{ pattern: "Retries", detail: "ok", status: "Healthy" }]
     });
 
-    expect(html).toContain("Fault Tolerance");
-    expect(html).toContain("Retries");
+    expect(emptyHtml).toContain("No fault-tolerance reports available");
+    expect(defaultHtml).toContain("No fault-tolerance reports available");
+    expect(filledHtml).toContain("Retries");
   });
 
-  test("renderDeveloperPortal renders resources", () => {
-    const html = renderDeveloperPortal({
-      headline: "Developer Hub",
+  test("renderDeveloperPortal handles empty and resources", () => {
+    const emptyHtml = renderDeveloperPortal({
+      headline: "Developer Portal",
+      description: "Docs",
+      resources: []
+    });
+    const defaultHtml = renderDeveloperPortal();
+    const missingHeadlineHtml = renderDeveloperPortal({
+      headline: "",
+      description: "",
+      resources: []
+    });
+    const fallbackHtml = renderDeveloperPortal({
+      headline: "Developer Portal",
+      description: "",
+      resources: []
+    });
+    const filledHtml = renderDeveloperPortal({
+      headline: "Developer Portal",
       description: "Docs",
       resources: [{ title: "API", detail: "Ref" }],
       status: "Updated"
     });
-
-    expect(html).toContain("Developer Hub");
-    expect(html).toContain("API");
-  });
-
-  test("renderObservability shows metrics", () => {
-    const html = renderObservability({
-      uptime: "99%",
-      latencyP95: "1s",
-      errorRate: "0%",
-      highlights: ["ok"]
+    const noStatusHtml = renderDeveloperPortal({
+      headline: "Developer Portal",
+      description: "Docs",
+      resources: [{ title: "API", detail: "Ref" }],
+      status: ""
     });
 
-    expect(html).toContain("Observability");
-    expect(html).toContain("99%");
+    expect(emptyHtml).toContain("Docs");
+    expect(defaultHtml).toContain("No developer resources are available");
+    expect(missingHeadlineHtml).toContain("Developer Portal");
+    expect(fallbackHtml).toContain("No developer resources are available");
+    expect(filledHtml).toContain("API");
+    expect(noStatusHtml).toContain("API");
   });
 
-  test("renderOperationalAlerts shows alerts", () => {
-    const html = renderOperationalAlerts({
+  test("renderObservability shows metrics and highlights", () => {
+    const htmlWithHighlights = renderObservability({
+      uptimeSeconds: 42,
+      latencyP95Ms: 100,
+      errorRate: 0,
+      highlights: ["ok"]
+    });
+    const htmlNoHighlights = renderObservability({
+      uptimeSeconds: 0,
+      latencyP95Ms: null,
+      errorRate: null,
+      highlights: []
+    });
+    const htmlDefault = renderObservability();
+    const htmlUndefinedHighlights = renderObservability({ uptimeSeconds: 5 });
+
+    expect(htmlWithHighlights).toContain("42");
+    expect(htmlWithHighlights).toContain("ok");
+    expect(htmlNoHighlights).toContain("N/A");
+    expect(htmlDefault).toContain("Uptime (seconds)");
+    expect(htmlUndefinedHighlights).toContain("Uptime (seconds): 5");
+  });
+
+  test("renderOperationalAlerts shows empty and alerts", () => {
+    const emptyHtml = renderOperationalAlerts({ alerts: [] });
+    const defaultHtml = renderOperationalAlerts();
+    const filledHtml = renderOperationalAlerts({
       alerts: [{ severity: "info", message: "All good", status: "ok" }]
     });
 
-    expect(html).toContain("Operational Alerts");
-    expect(html).toContain("All good");
+    expect(emptyHtml).toContain("No alerts reported");
+    expect(defaultHtml).toContain("No alerts reported");
+    expect(filledHtml).toContain("All good");
   });
 });
 
@@ -398,6 +451,19 @@ describe("client data loading", () => {
     await expect(fetchJson("/bad")).rejects.toThrow("Failed to load /bad");
   });
 
+  test("fetchJson returns payload on success", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" })
+      })
+    );
+
+    const result = await fetchJson("/ok");
+
+    expect(result.status).toBe("ok");
+  });
+
   test("postJson throws with API error message", async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
@@ -407,6 +473,46 @@ describe("client data loading", () => {
     );
 
     await expect(postJson("/api/auth/login", { email: "bad" })).rejects.toThrow("Invalid request");
+  });
+
+  test("postJson sends auth header when token is provided", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" })
+      })
+    );
+
+    await postJson("/api/auth/logout", { ok: true }, { token: "token" });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/auth/logout",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer token"
+        })
+      })
+    );
+  });
+
+  test("postJson omits auth header when token is missing", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" })
+      })
+    );
+
+    await postJson("/api/status", { ok: true });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/status",
+      expect.objectContaining({
+        headers: expect.not.objectContaining({
+          Authorization: "Bearer token"
+        })
+      })
+    );
   });
 
   test("postJson handles non-json error responses", async () => {
@@ -420,7 +526,7 @@ describe("client data loading", () => {
     await expect(postJson("/api/auth/login", { email: "bad" })).rejects.toThrow("Request failed");
   });
 
-  test("init hydrates dashboard sections", async () => {
+  test("init hydrates signed-out sections", async () => {
     document.body.innerHTML = `
       <div id="profile-card"></div>
       <div id="home-highlights"></div>
@@ -440,96 +546,90 @@ describe("client data loading", () => {
       <div id="operational-alerts"></div>
     `;
 
-    global.fetch = jest.fn((url) => {
-      const responses = {
-        "/api/profile/user-1": {
-          name: "Test",
-          title: "Role",
-          role: "Owner",
-          location: "Remote",
-          notifications: ["Note"],
-          lastActive: "Now"
-        },
-        "/api/home": {
-          highlights: [{ title: "Hello", description: "World" }]
-        },
-        "/api/dashboard/user": {
-          focusLabel: "Focus",
-          highlights: ["Highlight"],
-          milestones: []
-        },
-        "/api/dashboard/org": {
-          name: "Org",
-          activeCalendars: 1,
-          upcomingEvents: 2,
-          complianceScore: "99%",
-          departments: ["Ops"]
-        },
-        "/api/calendar/view?view=month": {
-          label: "Month",
-          summary: "Summary",
-          days: ["Mon"],
-          featuredEvents: []
-        },
-        "/api/events/list?range=month": {
-          title: "month",
-          items: []
-        },
-        "/api/access": {
-          entries: [{ user: "A", calendar: "Cal", permissions: ["View"] }]
-        },
-        "/api/events/evt-100/comments": {
-          eventId: "evt-100",
-          entries: [{ author: "A", message: "Hi", time: "now" }]
-        },
-        "/api/embed/widget?calendarId=cal-1": {
-          title: "Embed",
-          theme: "Glow",
-          visibility: "Public",
-          endpoint: "/api",
-          sampleSnippet: "<iframe />"
-        },
-        "/api/sharing/preview?calendarId=cal-1": {
-          options: [{ channel: "Social", description: "Share", link: "link" }]
-        },
-        "/api/audit/history-snapshot": {
-          entries: [{ action: "login", summary: "Logged in", actor: "A", status: "ok", occurredAt: "now" }]
-        },
-        "/api/roles/summary?orgId=org-1": {
-          roles: [{ name: "Admin", summary: "Full", permissions: ["All"] }],
-          assignments: [{ user: "A", roleId: "role-1", assignedBy: "B", assignedAt: "today" }]
-        },
-        "/api/fault-tolerance/snapshot": {
-          snapshots: [{ pattern: "Retries", detail: "ok", status: "Healthy" }]
-        },
-        "/api/developer/portal": {
-          headline: "Dev",
-          description: "Docs",
-          resources: [{ title: "API", detail: "Ref" }],
-          status: "Updated"
-        },
-        "/api/monitoring/observability": {
-          uptime: "99%",
-          latencyP95: "1s",
-          errorRate: "0%",
-          highlights: ["ok"]
-        },
-        "/api/monitoring/alerts": {
-          alerts: [{ severity: "info", message: "All good", status: "ok" }]
-        }
-      };
+    const result = await init();
 
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(responses[url])
-      });
-    });
+    expect(result.hydrated).toBe(true);
+    expect(document.getElementById("calendar-view").innerHTML).toContain("Sign in to view this section");
+  });
+
+  test("init hydrates signed-in sections", async () => {
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="home-highlights"></div>
+      <div id="user-dashboard"></div>
+      <div id="org-dashboard"></div>
+      <div id="calendar-view"></div>
+      <div id="event-list"></div>
+      <div id="access-matrix"></div>
+      <div id="message-board"></div>
+      <div id="embed-widget"></div>
+      <div id="sharing-options"></div>
+      <div id="audit-history"></div>
+      <div id="role-management"></div>
+      <div id="fault-tolerance"></div>
+      <div id="developer-portal"></div>
+      <div id="observability"></div>
+      <div id="operational-alerts"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({
+        token: "token",
+        user: { name: "Test", email: "user@example.com", organizationId: "org-1" }
+      })
+    );
 
     await init();
 
     expect(document.getElementById("profile-card").innerHTML).toContain("Test");
-    expect(document.getElementById("message-board").innerHTML).toContain("evt-100");
-    expect(document.getElementById("embed-widget").innerHTML).toContain("Embed");
+    expect(document.getElementById("home-highlights").innerHTML).toContain("user@example.com");
+    expect(document.getElementById("org-dashboard").innerHTML).toContain("org-1");
+
+    window.localStorage.removeItem("tylendar-auth");
+  });
+
+  test("init handles signed-in users without an organization", async () => {
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="org-dashboard"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({
+        token: "token",
+        user: { name: "Test", email: "user@example.com" }
+      })
+    );
+
+    await init();
+
+    expect(document.getElementById("org-dashboard").innerHTML).toContain("No organization data is available yet");
+
+    window.localStorage.removeItem("tylendar-auth");
+  });
+
+  test("init uses fallback account highlights when email or org are missing", async () => {
+    document.body.innerHTML = `
+      <div id="home-highlights"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({
+        token: "token",
+        user: { name: "Test", email: "", organizationId: "" }
+      })
+    );
+
+    await init();
+
+    expect(document.getElementById("home-highlights").innerHTML).toContain("Email");
+    expect(document.getElementById("home-highlights").innerHTML).toContain("—");
+    expect(document.getElementById("home-highlights").innerHTML).toContain("None");
+
+    window.localStorage.removeItem("tylendar-auth");
   });
 
   test("init exits when no dashboard sections are present", async () => {
@@ -558,6 +658,14 @@ describe("auth utilities", () => {
   test("readAuthState returns null on invalid json", () => {
     const storage = createStorage();
     storage.setItem("tylendar-auth", "{not-json");
+
+    const result = readAuthState(storage);
+
+    expect(result).toBeNull();
+  });
+
+  test("readAuthState returns null when storage is empty", () => {
+    const storage = createStorage();
 
     const result = readAuthState(storage);
 
@@ -721,6 +829,19 @@ describe("auth utilities", () => {
     expect(trigger.classList.contains("is-hidden")).toBe(true);
   });
 
+  test("updateAuthStatus leaves triggers enabled when signed out", () => {
+    document.body.innerHTML = `
+      <button data-auth-trigger="login">Log in</button>
+      <span data-auth-status></span>
+    `;
+
+    updateAuthStatus(null);
+
+    const trigger = document.querySelector("[data-auth-trigger]");
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.classList.contains("is-hidden")).toBe(false);
+  });
+
   test("initAuthUI switches tabs and closes on escape", () => {
     document.body.innerHTML = `
       <button data-auth-trigger="login">Log in</button>
@@ -748,6 +869,28 @@ describe("auth utilities", () => {
 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(document.getElementById("auth-modal").classList.contains("auth-modal--open")).toBe(false);
+  });
+
+  test("initAuthUI ignores non-escape key presses", () => {
+    document.body.innerHTML = `
+      <button data-auth-trigger="login">Log in</button>
+      <div id="auth-modal" aria-hidden="true">
+        <div data-auth-close></div>
+        <button data-auth-close></button>
+        <button data-auth-tab="login"></button>
+        <form data-auth-panel="login"></form>
+        <div data-auth-feedback></div>
+      </div>
+    `;
+
+    initAuthUI();
+
+    document.querySelector("[data-auth-trigger]")
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+    expect(document.getElementById("auth-modal").classList.contains("auth-modal--open")).toBe(true);
   });
 
   test("initAuthUI handles submit errors", async () => {
@@ -833,50 +976,6 @@ describe("auth utilities", () => {
       .dispatchEvent(new Event("click", { bubbles: true }));
 
     expect(document.getElementById("auth-modal").classList.contains("auth-modal--open")).toBe(true);
-  });
-
-  test("init tolerates missing sections", async () => {
-    document.body.innerHTML = `
-      <div id="profile-card"></div>
-    `;
-
-    global.fetch = jest.fn((url) => {
-      const responses = {
-        "/api/profile/user-1": {
-          name: "Test",
-          title: "Role",
-          role: "Owner",
-          location: "Remote",
-          notifications: ["Note"],
-          lastActive: "Now"
-        },
-        "/api/home": { highlights: [] },
-        "/api/dashboard/user": { highlights: [] },
-        "/api/dashboard/org": { departments: [] },
-        "/api/calendar/view?view=month": { days: [], featuredEvents: [] },
-        "/api/events/list?range=month": { title: "month", items: [] },
-        "/api/access": { entries: [] },
-        "/api/events/evt-100/comments": { eventId: "evt-100", entries: [] },
-        "/api/embed/widget?calendarId=cal-1": { title: "", theme: "", visibility: "", endpoint: "", sampleSnippet: "" },
-        "/api/sharing/preview?calendarId=cal-1": { options: [] },
-        "/api/audit/history-snapshot": { entries: [] },
-        "/api/roles/summary?orgId=org-1": { roles: [], assignments: [] },
-        "/api/fault-tolerance/snapshot": { snapshots: [] },
-        "/api/developer/portal": { headline: "", description: "", resources: [], status: "" },
-        "/api/monitoring/observability": { uptime: "", latencyP95: "", errorRate: "", highlights: [] },
-        "/api/monitoring/alerts": { alerts: [] }
-      };
-
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(responses[url])
-      });
-    });
-
-    const result = await init();
-
-    expect(result.hydrated).toBe(true);
-    expect(document.getElementById("profile-card").innerHTML).toContain("Test");
   });
 
   test("readAuthState uses window storage when available", () => {

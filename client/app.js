@@ -84,6 +84,15 @@ function setAuthFeedback(message, tone = "info") {
   feedback.classList.toggle("is-hidden", !message);
 }
 
+function renderEmptyState({ title, message }) {
+  return `
+    <div class="empty-state">
+      <h3>${title}</h3>
+      <p class="muted">${message}</p>
+    </div>
+  `;
+}
+
 function updateAuthStatus(state, storageOverride) {
   const containers = document.querySelectorAll("[data-auth-status]");
   containers.forEach((container) => {
@@ -130,20 +139,35 @@ function buildAuthPayload(mode, form) {
 }
 
 function renderProfile(profile) {
+  if (!profile) {
+    return renderEmptyState({
+      title: "Profile",
+      message: "Sign in to view your profile details."
+    });
+  }
+
+  const details = [
+    { label: "Email", value: profile.email || "—" },
+    { label: "Organization", value: profile.organizationId || "None" },
+    { label: "Role", value: profile.role || "member" }
+  ];
+
   return `
-    <h3>${profile.name}</h3>
-    <p>${profile.title} · ${profile.role}</p>
-    <p class="muted">${profile.location}</p>
-    <div class="badges">
-      ${profile.notifications
-        .map((note) => `<span class="badge">${note}</span>`)
-        .join("")}
-    </div>
-    <p class="muted">Last active: ${profile.lastActive}</p>
+    <h3>${profile.name || "Account"}</h3>
+    <ul class="list">
+      ${details.map((item) => `<li>${item.label}: ${item.value}</li>`).join("")}
+    </ul>
   `;
 }
 
-function renderHighlights(highlights) {
+function renderHighlights(highlights = []) {
+  if (!highlights.length) {
+    return renderEmptyState({
+      title: "Account Summary",
+      message: "No account details available yet."
+    });
+  }
+
   const items = highlights
     .map(
       (highlight) => `
@@ -156,256 +180,101 @@ function renderHighlights(highlights) {
     .join("");
 
   return `
-    <h3>Home Page Highlights</h3>
+    <h3>Account Summary</h3>
     <ul class="list">${items}</ul>
   `;
 }
 
-function renderDashboard(title, summary) {
+function renderDashboard(title, summary = {}) {
+  const items = summary.items || summary.highlights || summary.departments || [];
+  if (!items.length) {
+    return renderEmptyState({
+      title,
+      message: "No dashboard data is available yet."
+    });
+  }
+
   return `
     <h3>${title}</h3>
-    <p class="muted">${summary.focusLabel || "Community pulse"}</p>
     <ul class="list">
-      ${(summary.highlights || summary.departments || []).map((item) => `<li>${item}</li>`).join("")}
+      ${items.map((item) => `<li>${item}</li>`).join("")}
     </ul>
-    <div class="badges">
-      ${(summary.milestones || []).map((item) => `<span class="badge">${item}</span>`).join("")}
-    </div>
   `;
 }
 
 function renderOrganizationStats(org) {
+  if (!org || !org.name) {
+    return renderEmptyState({
+      title: "Organization Dashboard",
+      message: "No organization data is available yet."
+    });
+  }
+
   const stats = [
-    `Active calendars: ${org.activeCalendars}`,
-    `Upcoming events: ${org.upcomingEvents}`,
-    `Compliance score: ${org.complianceScore}`
+    `Active calendars: ${org.activeCalendars ?? 0}`,
+    `Upcoming events: ${org.upcomingEvents ?? 0}`,
+    `Members: ${org.memberCount ?? 0}`
   ];
 
   return `
     <h3>${org.name} Dashboard</h3>
     <ul class="list">${stats.map((stat) => `<li>${stat}</li>`).join("")}</ul>
-    <div class="badges">
-      ${org.departments.map((dept) => `<span class="badge">${dept}</span>`).join("")}
-    </div>
   `;
 }
 
-function renderCalendarView(calendar) {
-  const viewLabel = calendar.label || "Calendar";
-  const summary = calendar.summary || "Overview of scheduled moments and focus blocks.";
-  const ownerLabel = calendar.ownerName || calendar.userName || "You";
-  const timezoneLabel = calendar.timezone || "Local time";
-  const rangeLabel = calendar.rangeLabel || "This week";
-  const availabilityLabel = calendar.availability || "3 open slots today";
-  const inboxCount = typeof calendar.inboxCount === "number" ? calendar.inboxCount : 0;
-  const quickActions =
-    Array.isArray(calendar.quickActions) && calendar.quickActions.length
-      ? calendar.quickActions
-      : ["New event", "Block focus", "Share availability"];
-  const focusAreas =
-    Array.isArray(calendar.focusAreas) && calendar.focusAreas.length
-      ? calendar.focusAreas
-      : ["Deep work", "Team syncs", "Recharge"];
-  const syncLabel = calendar.syncStatus || "Synced moments ago";
-  const days =
-    Array.isArray(calendar.days) && calendar.days.length
-      ? calendar.days
-      : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const events = Array.isArray(calendar.featuredEvents) ? calendar.featuredEvents : [];
-  const viewKey = String(calendar.view || viewLabel).toLowerCase();
-  const viewOptions = [
-    { key: "month", label: "Month" },
-    { key: "2-week", label: "2-week" },
-    { key: "week", label: "Week" },
-    { key: "day", label: "Day" }
-  ];
-  const baseSlots = ["8:00 AM", "10:00 AM", "12:00 PM", "1:00 PM", "3:00 PM", "5:00 PM"];
-  const timeSlots = ["All day", ...baseSlots];
-  const dayOrder = new Map(days.map((day, index) => [day, index]));
-  const timeOrder = new Map(baseSlots.map((slot, index) => [slot, index]));
-  const isAllDayEvent = (event) => !event.time || !timeOrder.has(event.time);
-  const agendaItems = [...events].sort((a, b) => {
-    const dayDelta = (dayOrder.get(a.day) ?? 99) - (dayOrder.get(b.day) ?? 99);
-    if (dayDelta !== 0) {
-      return dayDelta;
-    }
-    return (timeOrder.get(a.time) ?? 99) - (timeOrder.get(b.time) ?? 99);
-  });
-  const dayBadges = days
-    .map((day) => {
-      const count = events.filter((event) => event.day === day).length;
-      return `
-        <div class="calendar-pill">
-          <span>${day}</span>
-          <span class="calendar-pill__count">${count}</span>
-        </div>
-      `;
-    })
-    .join("");
-  const viewPills = viewOptions
-    .map((option) => {
-      const isActive =
-        viewKey.includes(option.key) ||
-        viewLabel.toLowerCase().includes(option.label.toLowerCase());
-      return `
-        <span class="calendar-pill${isActive ? " calendar-pill--active" : ""}">
-          ${option.label}
-        </span>
-      `;
-    })
-    .join("");
-  const gridHeader = days.map((day) => `<div class="calendar-grid__day">${day}</div>`).join("");
-  const gridRows = timeSlots
-    .map((slot) => {
-      const cells = days
-        .map((day) => {
-          const slotEvents = events.filter((event) => {
-            if (event.day !== day) {
-              return false;
-            }
-            if (slot === "All day") {
-              return isAllDayEvent(event);
-            }
-            return event.time === slot;
-          });
-          const eventCards = slotEvents
-            .map((event) => {
-              const calendarName = event.calendar || "Shared";
-              const ownerName = event.owner || "Unassigned";
-              return `
-              <div class="calendar-event">
-                <div class="calendar-event__title">${event.title}</div>
-                <div class="calendar-event__meta">${calendarName} · ${ownerName}</div>
-              </div>
-            `;
-            })
-            .join("");
-          const emptyState = `<span class="calendar-slot__empty">—</span>`;
-          return `
-            <div class="calendar-slot${slotEvents.length ? "" : " calendar-slot--empty"}">
-              ${slotEvents.length ? eventCards : emptyState}
-            </div>
-          `;
-        })
-        .join("");
-      return `
-        <div class="calendar-grid__time">${slot}</div>
-        ${cells}
-      `;
-    })
-    .join("");
-  const agendaList = agendaItems.length
-    ? agendaItems
+function renderCalendarView(calendar = {}) {
+  const label = calendar.label || "Calendar";
+  const summary = calendar.summary || "No calendar data available.";
+  const events = Array.isArray(calendar.events)
+    ? calendar.events
+    : Array.isArray(calendar.featuredEvents)
+      ? calendar.featuredEvents
+      : [];
+
+  const items = events.length
+    ? events
         .map((event) => {
-          const calendarName = event.calendar || "Shared";
-          const ownerName = event.owner || "Unassigned";
-          return `
-            <li>
-              <strong>${event.title}</strong>
-              <p>${calendarName} · ${ownerName}</p>
-              <span class="muted">${event.day} · ${event.time || "All day"}</span>
-            </li>
-          `;
+          const dateLabel = event.day || event.startsAt || "Unscheduled";
+          return `<li><strong>${event.title}</strong> · ${dateLabel}</li>`;
         })
         .join("")
-    : `<li class="muted">No featured events scheduled yet.</li>`;
-  const actionButtons = quickActions
-    .map(
-      (action) => `
-        <button class="calendar-action" type="button">${action}</button>
-      `
-    )
-    .join("");
-  const focusList = focusAreas.map((area) => `<li>${area}</li>`).join("");
+    : `<li class="muted">No events scheduled.</li>`;
 
   return `
-    <div class="calendar-view">
-      <div class="calendar-view__header">
-        <div>
-          <p class="calendar-kicker">${rangeLabel} · ${timezoneLabel}</p>
-          <h3>${viewLabel} Calendar View</h3>
-          <p class="muted">${summary}</p>
-          <div class="calendar-meta">
-            <span>Owner: ${ownerLabel}</span>
-            <span>Availability: ${availabilityLabel}</span>
-            <span>Invites: ${inboxCount}</span>
-          </div>
-        </div>
-        <div class="calendar-view__controls">
-          <div class="calendar-control">
-            <span class="calendar-control__label">Quick actions</span>
-            <div class="calendar-control__actions">${actionButtons}</div>
-          </div>
-          <div class="calendar-control">
-            <span class="calendar-control__label">Search & filters</span>
-            <div class="calendar-search">
-              <input type="search" placeholder="Search events or people" />
-              <button class="ghost calendar-search__button" type="button">Filters</button>
-            </div>
-          </div>
-          <div class="calendar-control">
-            <span class="calendar-control__label">View</span>
-            <div class="calendar-control__pills">${viewPills}</div>
-          </div>
-          <div class="calendar-control">
-            <span class="calendar-control__label">Focus days</span>
-            <div class="calendar-control__pills">${dayBadges}</div>
-          </div>
-        </div>
-      </div>
-      <div class="calendar-spotlight">
-        <div class="calendar-panel">
-          <h4>Focus areas</h4>
-          <p class="muted">Balance the moments that matter most.</p>
-          <ul class="list">${focusList}</ul>
-        </div>
-        <div class="calendar-panel">
-          <h4>Availability pulse</h4>
-          <p class="muted">${availabilityLabel}</p>
-          <div class="calendar-panel__meta">
-            <span>${timezoneLabel}</span>
-            <span>${syncLabel}</span>
-          </div>
-        </div>
-      </div>
-      <div class="calendar-view__body">
-        <div class="calendar-grid">
-          <div class="calendar-grid__corner">Time</div>
-          ${gridHeader}
-          ${gridRows}
-        </div>
-        <div class="calendar-agenda">
-          <h4>Upcoming focus</h4>
-          <p class="muted">Quick list for the next featured moments.</p>
-          <ul class="list">${agendaList}</ul>
-        </div>
-      </div>
-    </div>
+    <h3>${label}</h3>
+    <p class="muted">${summary}</p>
+    <ul class="list">${items}</ul>
   `;
 }
 
-function renderEventList(view) {
+function renderEventList(view = { title: "Events", items: [] }) {
   const list = view.items.length
     ? view.items
     : [
         {
           title: "No events scheduled",
-          day: "",
-          time: ""
+          day: ""
         }
       ];
 
   return `
-    <h3>Event List · ${view.title}</h3>
+    <h3>${view.title}</h3>
     <ul class="list">
       ${list
-        .map((event) => `<li>${event.title} ${event.day ? `· ${event.day}` : ""}</li>`)
+        .map((event) => `<li>${event.title}${event.day ? ` · ${event.day}` : ""}</li>`)
         .join("")}
     </ul>
   `;
 }
 
-function renderAccessMatrix(entries) {
+function renderAccessMatrix(entries = []) {
+  if (!entries.length) {
+    return renderEmptyState({
+      title: "Access Assignments",
+      message: "No access entries have been configured."
+    });
+  }
+
   return `
     <h3>Access Assignments</h3>
     <table class="table">
@@ -433,7 +302,14 @@ function renderAccessMatrix(entries) {
   `;
 }
 
-function renderMessageBoard(board) {
+function renderMessageBoard(board = { eventId: "", entries: [] }) {
+  if (!board.entries.length) {
+    return renderEmptyState({
+      title: "MessageBoard",
+      message: "No event comments available."
+    });
+  }
+
   const messages = board.entries
     .map(
       (entry) => `
@@ -453,38 +329,55 @@ function renderMessageBoard(board) {
 }
 
 function renderEmbedWidget(widget) {
+  if (!widget || !widget.title) {
+    return renderEmptyState({
+      title: "Embed Widget",
+      message: "No public embed is available."
+    });
+  }
+
   return `
     <h3>Embed Widget</h3>
-    <p class="muted">${widget.title} · ${widget.theme}</p>
-    <div class="badges">
-      <span class="badge">Visibility: ${widget.visibility}</span>
-      <span class="badge">API: ${widget.endpoint}</span>
-    </div>
-    <div class="code-block">${widget.sampleSnippet}</div>
+    <p class="muted">${widget.title}</p>
+    <div class="code-block">${widget.sampleSnippet || "Embed snippet unavailable."}</div>
   `;
 }
 
-function renderSharingOptions(payload) {
+function renderSharingOptions(payload = { options: [] }) {
+  if (!payload.options.length) {
+    return renderEmptyState({
+      title: "Sharing",
+      message: "No sharing options configured."
+    });
+  }
+
   const items = payload.options
     .map((option) => {
-      const extras = option.formats ? `Formats: ${option.formats.join(", ")}` : option.link;
+      const extras = option.formats ? `Formats: ${option.formats.join(", ")}` : option.link || "";
       return `
         <li>
           <strong>${option.channel}</strong>
           <p>${option.description}</p>
-          <span class="muted">${extras}</span>
+          ${extras ? `<span class="muted">${extras}</span>` : ""}
         </li>
       `;
     })
     .join("");
 
   return `
-    <h3>Social Sharing & Export</h3>
+    <h3>Sharing</h3>
     <ul class="list">${items}</ul>
   `;
 }
 
-function renderAuditHistory(payload) {
+function renderAuditHistory(payload = { entries: [] }) {
+  if (!payload.entries.length) {
+    return renderEmptyState({
+      title: "Audit History",
+      message: "No audit activity recorded."
+    });
+  }
+
   const entries = payload.entries
     .map(
       (entry) => `
@@ -503,14 +396,21 @@ function renderAuditHistory(payload) {
   `;
 }
 
-function renderRoleManagement(payload) {
+function renderRoleManagement(payload = { roles: [], assignments: [] }) {
+  if (!payload.roles.length && !payload.assignments.length) {
+    return renderEmptyState({
+      title: "Role Management",
+      message: "No roles or assignments configured."
+    });
+  }
+
   const roles = payload.roles
     .map(
       (role) => `
         <li>
           <strong>${role.name}</strong>
-          <p>${role.summary}</p>
-          <span class="muted">${role.permissions.join(", ")}</span>
+          ${role.summary ? `<p>${role.summary}</p>` : ""}
+          ${role.permissions?.length ? `<span class="muted">${role.permissions.join(", ")}</span>` : ""}
         </li>
       `
     )
@@ -542,7 +442,14 @@ function renderRoleManagement(payload) {
   `;
 }
 
-function renderFaultTolerance(snapshot) {
+function renderFaultTolerance(snapshot = { snapshots: [] }) {
+  if (!snapshot.snapshots.length) {
+    return renderEmptyState({
+      title: "Fault Tolerance",
+      message: "No fault-tolerance reports available."
+    });
+  }
+
   const items = snapshot.snapshots
     .map(
       (entry) => `
@@ -561,7 +468,7 @@ function renderFaultTolerance(snapshot) {
   `;
 }
 
-function renderDeveloperPortal(portal) {
+function renderDeveloperPortal(portal = { headline: "Developer Portal", description: "", resources: [], status: "" }) {
   const resources = portal.resources
     .map(
       (resource) => `
@@ -573,29 +480,49 @@ function renderDeveloperPortal(portal) {
     )
     .join("");
 
+  if (!resources.length) {
+    return renderEmptyState({
+      title: portal.headline || "Developer Portal",
+      message: portal.description || "No developer resources are available."
+    });
+  }
+
   return `
     <h3>${portal.headline}</h3>
     <p class="muted">${portal.description}</p>
     <ul class="list">${resources}</ul>
-    <p class="muted">${portal.status}</p>
+    ${portal.status ? `<p class="muted">${portal.status}</p>` : ""}
   `;
 }
 
-function renderObservability(overview) {
+function renderObservability(overview = { uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [] }) {
+  const latency = overview.latencyP95Ms ?? "N/A";
+  const errorRate = overview.errorRate ?? "N/A";
+  const highlights = overview.highlights || [];
+
   return `
     <h3>Observability Dashboard</h3>
     <ul class="list">
-      <li>Uptime: ${overview.uptime}</li>
-      <li>P95 Latency: ${overview.latencyP95}</li>
-      <li>Error Rate: ${overview.errorRate}</li>
+      <li>Uptime (seconds): ${overview.uptimeSeconds ?? 0}</li>
+      <li>P95 Latency (ms): ${latency}</li>
+      <li>Error Rate: ${errorRate}</li>
     </ul>
-    <div class="badges">
-      ${overview.highlights.map((item) => `<span class="badge">${item}</span>`).join("")}
-    </div>
+    ${highlights.length
+      ? `<div class="badges">
+      ${highlights.map((item) => `<span class="badge">${item}</span>`).join("")}
+    </div>`
+      : ""}
   `;
 }
 
-function renderOperationalAlerts(payload) {
+function renderOperationalAlerts(payload = { alerts: [] }) {
+  if (!payload.alerts.length) {
+    return renderEmptyState({
+      title: "Operational Alerts",
+      message: "No alerts reported."
+    });
+  }
+
   const alerts = payload.alerts
     .map(
       (alert) => `
@@ -664,7 +591,7 @@ function initAuthUI({ storage } = {}) {
     setMode(mode);
     modal.classList.add("auth-modal--open");
     modal.setAttribute("aria-hidden", "false");
-    setAuthFeedback("", "info");
+    setAuthFeedback("");
   };
 
   const closeModal = () => {
@@ -724,42 +651,17 @@ async function init(selectorOverrides = {}) {
     return { hydrated: false };
   }
 
-  const [
-    profile,
-    home,
-    userDash,
-    orgDash,
-    calendar,
-    events,
-    access,
-    message,
-    embed,
-    sharing,
-    audit,
-    roles,
-    faultTolerance,
-    developer,
-    observability,
-    alerts
-  ] =
-    await Promise.all([
-      fetchJson("/api/profile/user-1"),
-      fetchJson("/api/home"),
-      fetchJson("/api/dashboard/user"),
-      fetchJson("/api/dashboard/org"),
-      fetchJson("/api/calendar/view?view=month"),
-      fetchJson("/api/events/list?range=month"),
-      fetchJson("/api/access"),
-      fetchJson("/api/events/evt-100/comments"),
-      fetchJson("/api/embed/widget?calendarId=cal-1"),
-      fetchJson("/api/sharing/preview?calendarId=cal-1"),
-      fetchJson("/api/audit/history-snapshot"),
-      fetchJson("/api/roles/summary?orgId=org-1"),
-      fetchJson("/api/fault-tolerance/snapshot"),
-      fetchJson("/api/developer/portal"),
-      fetchJson("/api/monitoring/observability"),
-      fetchJson("/api/monitoring/alerts")
-    ]);
+  const authState = readAuthState();
+  const isSignedIn = Boolean(authState && authState.token);
+  const accountHighlights = authState?.user
+    ? [
+        { title: "Email", description: authState.user.email || "—" },
+        { title: "Organization", description: authState.user.organizationId || "None" },
+        { title: "Role", description: authState.user.role || "member" }
+      ]
+    : [];
+
+  const signInMessage = "Sign in to view this section.";
 
   const setSection = (selector, html) => {
     const element = document.getElementById(selector);
@@ -768,22 +670,54 @@ async function init(selectorOverrides = {}) {
     }
   };
 
-  setSection(selectors.profileCard, renderProfile(profile));
-  setSection(selectors.homeHighlights, renderHighlights(home.highlights));
-  setSection(selectors.userDashboard, renderDashboard("User Dashboard", userDash));
-  setSection(selectors.orgDashboard, renderOrganizationStats(orgDash));
-  setSection(selectors.calendarView, renderCalendarView(calendar));
-  setSection(selectors.eventList, renderEventList(events));
-  setSection(selectors.accessMatrix, renderAccessMatrix(access.entries));
-  setSection(selectors.messageBoard, renderMessageBoard(message));
-  setSection(selectors.embedWidget, renderEmbedWidget(embed));
-  setSection(selectors.sharingOptions, renderSharingOptions(sharing));
-  setSection(selectors.auditHistory, renderAuditHistory(audit));
-  setSection(selectors.roleManagement, renderRoleManagement(roles));
-  setSection(selectors.faultTolerance, renderFaultTolerance(faultTolerance));
-  setSection(selectors.developerPortal, renderDeveloperPortal(developer));
-  setSection(selectors.observability, renderObservability(observability));
-  setSection(selectors.operationalAlerts, renderOperationalAlerts(alerts));
+  if (isSignedIn) {
+    const orgPayload = authState.user.organizationId
+      ? {
+          name: authState.user.organizationId,
+          activeCalendars: 0,
+          upcomingEvents: 0,
+          memberCount: 0
+        }
+      : null;
+
+    setSection(selectors.profileCard, renderProfile(authState.user));
+    setSection(selectors.homeHighlights, renderHighlights(accountHighlights));
+    setSection(selectors.userDashboard, renderDashboard("User Dashboard", { items: [] }));
+    setSection(selectors.orgDashboard, renderOrganizationStats(orgPayload));
+    setSection(selectors.calendarView, renderCalendarView({ label: "Calendar", summary: "No calendars available.", events: [] }));
+    setSection(selectors.eventList, renderEventList({ title: "Events", items: [] }));
+    setSection(selectors.accessMatrix, renderAccessMatrix([]));
+    setSection(selectors.messageBoard, renderMessageBoard({ eventId: "", entries: [] }));
+    setSection(selectors.embedWidget, renderEmbedWidget(null));
+    setSection(selectors.sharingOptions, renderSharingOptions({ options: [] }));
+    setSection(selectors.auditHistory, renderAuditHistory({ entries: [] }));
+    setSection(selectors.roleManagement, renderRoleManagement({ roles: [], assignments: [] }));
+    setSection(selectors.faultTolerance, renderFaultTolerance({ snapshots: [] }));
+    setSection(
+      selectors.developerPortal,
+      renderDeveloperPortal({ headline: "Developer Portal", description: "No developer resources are available.", resources: [], status: "" })
+    );
+    setSection(selectors.observability, renderObservability({ uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [] }));
+    setSection(selectors.operationalAlerts, renderOperationalAlerts({ alerts: [] }));
+  } else {
+    setSection(selectors.profileCard, renderProfile(null));
+    setSection(selectors.homeHighlights, renderHighlights([]));
+    setSection(selectors.userDashboard, renderEmptyState({ title: "User Dashboard", message: signInMessage }));
+    setSection(selectors.orgDashboard, renderEmptyState({ title: "Organization Dashboard", message: signInMessage }));
+    setSection(selectors.calendarView, renderEmptyState({ title: "Calendar", message: signInMessage }));
+    setSection(selectors.eventList, renderEmptyState({ title: "Events", message: signInMessage }));
+    setSection(selectors.accessMatrix, renderEmptyState({ title: "Access", message: signInMessage }));
+    setSection(selectors.messageBoard, renderEmptyState({ title: "MessageBoard", message: signInMessage }));
+    setSection(selectors.embedWidget, renderEmptyState({ title: "Embed Widget", message: signInMessage }));
+    setSection(selectors.sharingOptions, renderEmptyState({ title: "Sharing", message: signInMessage }));
+    setSection(selectors.auditHistory, renderEmptyState({ title: "Audit History", message: signInMessage }));
+    setSection(selectors.roleManagement, renderEmptyState({ title: "Role Management", message: signInMessage }));
+    setSection(selectors.faultTolerance, renderEmptyState({ title: "Fault Tolerance", message: signInMessage }));
+    setSection(selectors.developerPortal, renderEmptyState({ title: "Developer Portal", message: signInMessage }));
+    setSection(selectors.observability, renderEmptyState({ title: "Observability", message: signInMessage }));
+    setSection(selectors.operationalAlerts, renderEmptyState({ title: "Operational Alerts", message: signInMessage }));
+  }
+
   return { hydrated: true };
 }
 
@@ -796,6 +730,7 @@ if (typeof window !== "undefined") {
   });
 }
 
+/* istanbul ignore next */
 if (typeof module !== "undefined") {
   module.exports = {
     buildAuthPayload,

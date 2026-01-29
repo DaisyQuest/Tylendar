@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Social Calendar Space</title>
+    <title>Tylendar | Calendar System</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -32,25 +32,14 @@
       </nav>
       <section class="hero-banner" id="home">
         <div>
-          <p class="eyebrow">Welcome to your social calendar space</p>
-          <h1>Plan together, celebrate together, and keep every moment connected.</h1>
+          <p class="eyebrow">Calendar system</p>
+          <h1>Tylendar Calendar Workspace</h1>
           <p class="subheading">
-            Tylendar keeps your shared plans in one calm, welcoming place. Explore each
-            experience with dedicated pages designed for deep focus.
+            Sign in to manage calendars, events, permissions, and monitoring.
           </p>
           <div class="hero-actions">
-            <a class="primary" href="/calendar">Open the calendar view</a>
-            <a class="secondary" href="/profiles">Visit your profile space</a>
-          </div>
-        </div>
-        <div class="hero-card">
-          <div class="hero-card__title">Today on Tylendar</div>
-          <div class="hero-card__metric">6 focus-ready experiences</div>
-          <p class="hero-card__detail">Each view has its own page, layout, and guidance.</p>
-          <div class="hero-card__badges">
-            <span>Focused</span>
-            <span>Accessible</span>
-            <span>Calm</span>
+            <a class="primary" href="/calendar">Open calendar</a>
+            <a class="secondary" href="/profiles">View profile</a>
           </div>
         </div>
       </section>
@@ -59,57 +48,57 @@
     <main class="home-directory">
       <section class="section">
         <div class="section-heading">
-          <h2>Your feature directory</h2>
-          <p>Jump straight into a dedicated page built for each experience.</p>
+          <h2>Quick links</h2>
+          <p>Open the area you need.</p>
         </div>
         <div class="directory-grid">
           <a class="directory-card" href="/profiles">
             <div class="directory-card__title">Profile & Presence</div>
-            <div class="directory-card__meta">Keep your status, focus, and notifications in sync.</div>
+            <div class="directory-card__meta">Manage account details.</div>
           </a>
           <a class="directory-card" href="/dashboards">
             <div class="directory-card__title">Dashboards</div>
-            <div class="directory-card__meta">Quick pulses for personal and organization health.</div>
+            <div class="directory-card__meta">Review status and activity.</div>
           </a>
           <a class="directory-card" href="/calendar">
             <div class="directory-card__title">Calendar Views</div>
-            <div class="directory-card__meta">Month, week, and day perspectives with focus cues.</div>
+            <div class="directory-card__meta">Plan and review schedules.</div>
           </a>
           <a class="directory-card" href="/access">
             <div class="directory-card__title">Manage Access</div>
-            <div class="directory-card__meta">Audit and update permissions in one clear table.</div>
+            <div class="directory-card__meta">Control access permissions.</div>
           </a>
           <a class="directory-card" href="/messageboard">
             <div class="directory-card__title">MessageBoard</div>
-            <div class="directory-card__meta">Keep event conversations warm and contextual.</div>
+            <div class="directory-card__meta">Review event discussions.</div>
           </a>
           <a class="directory-card" href="/embed">
             <div class="directory-card__title">Embed Widget</div>
-            <div class="directory-card__meta">Portable calendar previews for any workspace.</div>
+            <div class="directory-card__meta">Manage public embeds.</div>
           </a>
           <a class="directory-card" href="/sharing">
             <div class="directory-card__title">Sharing & Export</div>
-            <div class="directory-card__meta">Send links or export schedules with perfect time zones.</div>
+            <div class="directory-card__meta">Share or export calendars.</div>
           </a>
           <a class="directory-card" href="/audit">
             <div class="directory-card__title">Audit History</div>
-            <div class="directory-card__meta">Trace changes with a beautiful, readable timeline.</div>
+            <div class="directory-card__meta">Review audit logs.</div>
           </a>
           <a class="directory-card" href="/roles">
             <div class="directory-card__title">Roles & Permissions</div>
-            <div class="directory-card__meta">Fine-tune team access and ownership.</div>
+            <div class="directory-card__meta">Configure roles.</div>
           </a>
           <a class="directory-card" href="/resilience">
             <div class="directory-card__title">Fault Tolerance</div>
-            <div class="directory-card__meta">Resilient patterns that keep schedules running.</div>
+            <div class="directory-card__meta">Review resilience status.</div>
           </a>
           <a class="directory-card" href="/developer">
             <div class="directory-card__title">Developer Portal</div>
-            <div class="directory-card__meta">API specs, widgets, and integration guidance.</div>
+            <div class="directory-card__meta">Developer resources.</div>
           </a>
           <a class="directory-card" href="/observability">
             <div class="directory-card__title">Observability</div>
-            <div class="directory-card__meta">Stay ahead of uptime, latency, and alerting.</div>
+            <div class="directory-card__meta">Monitoring and alerts.</div>
           </a>
         </div>
       </section>
@@ -155,8 +144,8 @@
             </label>
             <label class="auth-field">
               <span>Organization ID</span>
-              <input type="text" name="organizationId" placeholder="org-1 (optional)" />
-              <small>Optional. Leave blank or use <strong>org-1</strong> for the community space.</small>
+              <input type="text" name="organizationId" placeholder="Organization ID (optional)" />
+              <small>Optional. Leave blank if you are not joining an existing organization.</small>
             </label>
             <label class="auth-field">
               <span>Role</span>

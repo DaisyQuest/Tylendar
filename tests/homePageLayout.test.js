@@ -2,14 +2,14 @@ const fs = require("fs");
 const path = require("path");
 
 describe("home page layout", () => {
-  test("index page includes the feature directory", () => {
+  test("index page includes quick links", () => {
     const html = fs.readFileSync(
       path.join(__dirname, "..", "client", "index.html"),
       "utf8"
     );
 
     expect(html).toContain('class="home-directory"');
-    expect(html).toContain("Your feature directory");
+    expect(html).toContain("Quick links");
     expect(html).toContain("directory-card");
   });
 

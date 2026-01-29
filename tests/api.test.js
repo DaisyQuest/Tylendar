@@ -1,17 +1,29 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
+const {
+  DEFAULT_PASSWORD,
+  createCalendar,
+  createOrganization,
+  createUser
+} = require("./helpers/fixtures");
 
 describe("API modules", () => {
   test("org, calendar, permissions, audit flow", async () => {
     const repositories = createRepositories({ useInMemory: true });
-    await seedDatabase(repositories);
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
     const app = createApp({ repositories });
 
     const login = await request(app).post("/api/auth/login").send({
       email: "avery@example.com",
-      password: DEFAULT_USER_PASSWORD
+      password: DEFAULT_PASSWORD
     });
     const token = login.body.token;
 
@@ -157,12 +169,20 @@ describe("API modules", () => {
 
   test("roles, sharing, developer, and embed flows", async () => {
     const repositories = createRepositories({ useInMemory: true });
-    await seedDatabase(repositories);
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
+    await createCalendar(repositories, { id: "cal-1", ownerId: "org-1", ownerType: "organization", isPublic: true });
     const app = createApp({ repositories });
 
     const login = await request(app).post("/api/auth/login").send({
       email: "avery@example.com",
-      password: DEFAULT_USER_PASSWORD
+      password: DEFAULT_PASSWORD
     });
     const token = login.body.token;
 
@@ -218,7 +238,7 @@ describe("API modules", () => {
     expect(sharingPreview.body.options.length).toBeGreaterThan(0);
 
     const sharingPreviewDefault = await request(app).get("/api/sharing/preview");
-    expect(sharingPreviewDefault.body.calendarId).toBe("cal-1");
+    expect(sharingPreviewDefault.body.calendarId).toBeUndefined();
 
     const shareLink = await request(app)
       .post("/api/sharing/link")
@@ -230,7 +250,7 @@ describe("API modules", () => {
       .post("/api/sharing/link")
       .set("Authorization", `Bearer ${token}`)
       .send({});
-    expect(shareLinkDefault.body.link).toContain("/share/cal-1");
+    expect(shareLinkDefault.status).toBe(400);
 
     const exportResponse = await request(app)
       .post("/api/sharing/export")
@@ -238,11 +258,17 @@ describe("API modules", () => {
       .send({ calendarId: "cal-1", format: "ICS" });
     expect(exportResponse.status).toBe(201);
 
+    const exportDefaultFormat = await request(app)
+      .post("/api/sharing/export")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ calendarId: "cal-1" });
+    expect(exportDefaultFormat.body.format).toBe("ICS");
+
     const exportDefault = await request(app)
       .post("/api/sharing/export")
       .set("Authorization", `Bearer ${token}`)
       .send({});
-    expect(exportDefault.body.format).toBe("ICS");
+    expect(exportDefault.status).toBe(400);
 
     const embedResponse = await request(app).get("/api/calendars/cal-1/embed");
     expect(embedResponse.body.calendar.id).toBe("cal-1");
@@ -256,10 +282,15 @@ describe("API modules", () => {
     const embedPrivate = await request(app).get("/api/calendars/cal-private/embed");
     expect(embedPrivate.status).toBe(403);
 
+    const embedPrivateAuthed = await request(app)
+      .get("/api/calendars/cal-private/embed")
+      .set("Authorization", `Bearer ${token}`);
+    expect(embedPrivateAuthed.status).toBe(200);
+
     const embedMissing = await request(app).get("/api/calendars/missing/embed");
     expect(embedMissing.status).toBe(404);
 
     const developer = await request(app).get("/api/developer/portal");
-    expect(developer.body.resources.length).toBeGreaterThan(0);
+    expect(developer.body.headline).toBe("Developer Portal");
   });
 });

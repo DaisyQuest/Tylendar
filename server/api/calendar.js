@@ -68,7 +68,7 @@ function createCalendarRouter({ calendarsRepository, eventsRepository, permissio
       },
       events,
       embed: {
-        theme: "Lavender Glow",
+        theme: "default",
         refreshSeconds: 60,
         source: `/api/calendars/${calendar.id}`
       }

@@ -1,12 +1,19 @@
 const request = require("supertest");
 const { createApp } = require("../server/app");
 const { createRepositories } = require("../server/repositories");
-const { seedDatabase, DEFAULT_USER_PASSWORD } = require("../server/migrations/seed");
+const { DEFAULT_PASSWORD, createOrganization, createUser } = require("./helpers/fixtures");
 
 describe("auth API", () => {
   test("registration and login flow", async () => {
     const repositories = createRepositories({ useInMemory: true });
-    await seedDatabase(repositories);
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
     const app = createApp({ repositories });
 
     const missing = await request(app).post("/api/auth/register").send({});
@@ -73,7 +80,7 @@ describe("auth API", () => {
 
     const login = await request(app).post("/api/auth/login").send({
       email: "avery@example.com",
-      password: DEFAULT_USER_PASSWORD
+      password: DEFAULT_PASSWORD
     });
     expect(login.body.token).toBeDefined();
     expect(login.body.user.id).toBe("user-1");

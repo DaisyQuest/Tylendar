@@ -14,7 +14,7 @@
 - [x] **T-0101**: Define domain schemas/models (User, Organization, Calendar, CalendarPermissions, Event).
 - [x] **T-0102**: Implement data access layer (repositories) with MongoDB.
 - [x] **T-0103**: Implement validation layer for model inputs.
-- [x] **T-0104**: Implement migration/seed utilities for local dev/test.
+- [ ] **T-0104**: Implement migration/seed utilities for local dev/test.
 
 ## API Architecture
 - [x] **T-0201**: Define API module boundaries (auth, org, calendar, event, permissions, audit, monitoring).
