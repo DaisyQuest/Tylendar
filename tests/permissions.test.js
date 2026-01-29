@@ -107,4 +107,70 @@ describe("permission enforcement", () => {
 
     expect(denied.status).toBe(403);
   });
+
+  test("allows viewing events with view permissions", async () => {
+    const repositories = createRepositories({ useInMemory: true });
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
+    await createCalendar(repositories, { id: "cal-1", ownerId: "org-1", ownerType: "organization" });
+    await createCalendarPermission(repositories, {
+      id: "perm-1",
+      calendarId: "cal-1",
+      userId: "user-1",
+      grantedBy: "user-1",
+      permissions: ["View Calendar"]
+    });
+    const app = createApp({ repositories });
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_PASSWORD
+    });
+
+    const response = await request(app)
+      .get("/api/events")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .query({ calendarId: "cal-1" });
+
+    expect(response.status).toBe(200);
+  });
+
+  test("denies viewing events without view permissions", async () => {
+    const repositories = createRepositories({ useInMemory: true });
+    await createOrganization(repositories, { id: "org-1" });
+    await createUser(repositories, {
+      id: "user-1",
+      name: "Avery Chen",
+      email: "avery@example.com",
+      organizationId: "org-1",
+      role: "admin"
+    });
+    await createCalendar(repositories, { id: "cal-1", ownerId: "org-1", ownerType: "organization" });
+    await createCalendarPermission(repositories, {
+      id: "perm-1",
+      calendarId: "cal-1",
+      userId: "user-1",
+      grantedBy: "user-1",
+      permissions: ["Comment on Calendar"]
+    });
+    const app = createApp({ repositories });
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "avery@example.com",
+      password: DEFAULT_PASSWORD
+    });
+
+    const response = await request(app)
+      .get("/api/events")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .query({ calendarId: "cal-1" });
+
+    expect(response.status).toBe(403);
+  });
 });

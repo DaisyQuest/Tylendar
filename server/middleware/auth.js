@@ -1,17 +1,23 @@
-function parseToken(req) {
-  const header = req.headers.authorization;
+function parseAuthorizationHeader(header) {
   if (header && header.startsWith("Bearer ")) {
     return header.slice(7);
   }
-
-  if (req.headers.cookie) {
-    const match = req.headers.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("session="));
-    if (match) {
-      return match.slice("session=".length);
-    }
-  }
-
   return null;
+}
+
+function parseSessionCookie(cookieHeader) {
+  if (!cookieHeader) {
+    return null;
+  }
+  const match = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("session="));
+  return match ? match.slice("session=".length) : null;
+}
+
+function parseToken(req) {
+  return parseAuthorizationHeader(req.headers.authorization) || parseSessionCookie(req.headers.cookie);
 }
 
 function attachSession({ sessionStore, userRepository }) {
@@ -31,6 +37,11 @@ function attachSession({ sessionStore, userRepository }) {
     }
 
     const user = await userRepository.getById(session.userId);
+    if (!user) {
+      req.session = null;
+      req.user = null;
+      return next();
+    }
     req.session = session;
     req.user = user;
     return next();
@@ -47,5 +58,7 @@ function requireAuth(req, res, next) {
 module.exports = {
   attachSession,
   parseToken,
+  parseAuthorizationHeader,
+  parseSessionCookie,
   requireAuth
 };

@@ -38,6 +38,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Validate each permission type across API and UI.
    - Enforce permissions middleware during event create/update/delete flows across multiple calendars.
    - Verify permission changes immediately restrict existing sessions without cache leaks.
+   - Confirm permission evaluation supports any-of and all-of permission requirements for flexible access rules.
    - Confirm audit logs capture denied actions with clear reasons.
 5. **Event Lifecycle**
    - Create, update, delete events across multiple calendars.

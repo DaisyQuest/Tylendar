@@ -115,6 +115,7 @@ describe("auth API", () => {
       .get("/api/auth/session")
       .set("Authorization", `Bearer ${login.body.token}`);
     expect(session.body.user.id).toBe("user-1");
+    expect(Array.isArray(session.body.permissions)).toBe(true);
 
     const flags = await request(app).get("/api/auth/flags");
     expect(flags.body.authEnabled).toBe(true);

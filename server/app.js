@@ -17,6 +17,7 @@ const { createSessionStore } = require("./auth/sessionStore");
 const { attachSession } = require("./middleware/auth");
 const { requireFeature } = require("./middleware/featureFlags");
 const { createPermissionGuard } = require("./middleware/permissions");
+const { createPermissionEvaluator } = require("./permissions/permissionEvaluator");
 const { createRepositories } = require("./repositories");
 const { createAuditService } = require("./services/auditService");
 const { createDeveloperPortalService } = require("./services/developerPortalService");
@@ -32,14 +33,27 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
   const sharingService = createSharingService();
   const developerPortalService = createDeveloperPortalService();
   const sessions = sessionStore || createSessionStore();
-  const permissionGuard = createPermissionGuard({
+  const permissionEvaluator = createPermissionEvaluator({
     calendarPermissionsRepository: repos.calendarPermissions,
     auditService: audit
+  });
+  const permissionGuard = createPermissionGuard({
+    calendarPermissionsRepository: repos.calendarPermissions,
+    auditService: audit,
+    permissionEvaluator
   });
 
   app.use(express.json());
   app.use("/static", express.static(path.join(__dirname, "..", "client")));
   app.use(attachSession({ sessionStore: sessions, userRepository: repos.users }));
+  app.use(async (req, res, next) => {
+    if (!req.user) {
+      req.permissions = [];
+      return next();
+    }
+    req.permissions = await permissionEvaluator.listPermissions({ userId: req.user.id });
+    return next();
+  });
 
   app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "client", "index.html"));
@@ -94,13 +108,15 @@ function createApp({ featureOverrides, repositories, auditService, sessionStore,
     calendarPermissionsRepository: repos.calendarPermissions,
     shareTokensRepository: repos.shareTokens,
     permissionGuard,
-    auditService: audit
+    auditService: audit,
+    permissionEvaluator
   }));
   app.use("/api/events", requireFeature("event", flags), createEventRouter({
     eventsRepository: repos.events,
     calendarPermissionsRepository: repos.calendarPermissions,
     permissionGuard,
-    auditService: audit
+    auditService: audit,
+    permissionEvaluator
   }));
   app.use("/api/permissions", requireFeature("permissions", flags), createPermissionsRouter({
     calendarPermissionsRepository: repos.calendarPermissions,
