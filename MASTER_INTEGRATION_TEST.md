@@ -84,6 +84,10 @@ This document defines the **Master Integration Test (MIT)** that validates all m
     - Regenerate `package-lock.json` and confirm dependency resolution remains stable.
     - Verify recent merges compile and pass full integration coverage.
     - Confirm responsive layout across desktop and mobile breakpoints.
+17. **Production Deployment Readiness**
+    - Validate environment variables for production (`MONGODB_URI`, `SESSION_SECRET`, `NODE_ENV`, `FEATURE_FLAGS`).
+    - Confirm health and metrics endpoints respond after deployment (`/api/monitoring/health`, `/api/monitoring/metrics`).
+    - Verify release checklist steps in `deployment_guide.md` are completed before promotion.
 
 ## Coverage Requirements
 - **>=95% branch coverage** across codebase.
