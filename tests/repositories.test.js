@@ -97,11 +97,13 @@ describe("createRepositories", () => {
   test("uses defaults when no options are provided", () => {
     const repos = createRepositories();
     expect(repos.mode).toBe("memory");
+    expect(repos.shareTokens).toBeDefined();
   });
 
   test("defaults to in-memory when no mongo uri", () => {
     const repos = createRepositories({ useInMemory: true });
     expect(repos.mode).toBe("memory");
+    expect(repos.shareTokens).toBeDefined();
   });
 
   test("uses mongo mode when configured", () => {

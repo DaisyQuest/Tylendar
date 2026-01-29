@@ -5,6 +5,7 @@ const { createEvent } = require("../models/event");
 const { createOrganization } = require("../models/organization");
 const { createRole } = require("../models/role");
 const { createRoleAssignment } = require("../models/roleAssignment");
+const { createShareToken } = require("../models/shareToken");
 const { createUser } = require("../models/user");
 const { getEnv } = require("../config/env");
 const { createMemoryRepository } = require("./memoryRepository");
@@ -20,6 +21,7 @@ function createInMemoryRepositories() {
     organizations: createMemoryRepository({ createModel: createOrganization }),
     roleAssignments: createMemoryRepository({ createModel: createRoleAssignment }),
     roles: createMemoryRepository({ createModel: createRole }),
+    shareTokens: createMemoryRepository({ createModel: createShareToken }),
     users: createMemoryRepository({ createModel: createUser })
   };
 }
@@ -68,6 +70,11 @@ function createMongoRepositories({ mongoUri }) {
       collectionName: "roles",
       createModel: createRole,
       getCollection: getCollection("roles")
+    }),
+    shareTokens: createMongoRepository({
+      collectionName: "shareTokens",
+      createModel: createShareToken,
+      getCollection: getCollection("shareTokens")
     }),
     users: createMongoRepository({
       collectionName: "users",

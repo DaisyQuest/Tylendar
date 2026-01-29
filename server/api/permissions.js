@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const { requireAuth } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
 
@@ -18,7 +19,14 @@ function createPermissionsRouter({ calendarPermissionsRepository, auditService }
   }));
 
   router.post("/", requireAuth, asyncHandler(async (req, res) => {
-    const entry = await calendarPermissionsRepository.create(req.body);
+    const payload = { ...req.body };
+    if (!payload.id) {
+      payload.id = `perm-${crypto.randomBytes(8).toString("hex")}`;
+    }
+    if (!payload.grantedBy) {
+      payload.grantedBy = req.user.id;
+    }
+    const entry = await calendarPermissionsRepository.create(payload);
     await auditService.record({
       action: "permission_grant",
       actorId: req.user.id,

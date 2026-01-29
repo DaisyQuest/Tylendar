@@ -84,6 +84,28 @@ function setAuthFeedback(message, tone = "info") {
   feedback.classList.toggle("is-hidden", !message);
 }
 
+function setFormFeedback(form, message, tone = "info") {
+  if (!form) {
+    return;
+  }
+  const feedback = form.querySelector("[data-form-feedback]");
+  if (!feedback) {
+    return;
+  }
+  feedback.textContent = message;
+  feedback.dataset.tone = tone;
+  feedback.classList.toggle("is-hidden", !message);
+}
+
+function getSelectedPermissions(form) {
+  if (!form) {
+    return [];
+  }
+  return Array.from(form.querySelectorAll('input[name="permissions"]:checked'))
+    .map((input) => input.value)
+    .filter(Boolean);
+}
+
 function renderEmptyState({ title, message }) {
   return `
     <div class="empty-state">
@@ -353,7 +375,13 @@ function renderSharingOptions(payload = { options: [] }) {
 
   const items = payload.options
     .map((option) => {
-      const extras = option.formats ? `Formats: ${option.formats.join(", ")}` : option.link || "";
+      const extras = option.formats
+        ? `Formats: ${option.formats.join(", ")}`
+        : option.link
+          ? option.link
+          : option.permissions
+            ? `Permissions: ${option.permissions.join(", ")}`
+            : "";
       return `
         <li>
           <strong>${option.channel}</strong>
@@ -566,6 +594,143 @@ async function postJson(url, payload, { token } = {}) {
   return data;
 }
 
+function initCalendarControls() {
+  const authState = readAuthState();
+  const token = authState?.token;
+
+  const createForm = document.querySelector("[data-calendar-create]");
+  if (createForm) {
+    createForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!token) {
+        setFormFeedback(createForm, "Sign in to create a calendar.", "error");
+        return;
+      }
+
+      const formData = new FormData(createForm);
+      const name = String(formData.get("name") || "").trim();
+      const ownerType = String(formData.get("ownerType") || "").trim();
+      const ownerId = String(formData.get("ownerId") || "").trim();
+      const isPublic = formData.get("isPublic") === "on";
+
+      if (!name) {
+        setFormFeedback(createForm, "Calendar name is required.", "error");
+        return;
+      }
+
+      try {
+        const calendar = await postJson(
+          "/api/calendars",
+          {
+            name,
+            ownerType: ownerType || undefined,
+            ownerId: ownerId || undefined,
+            isPublic
+          },
+          { token }
+        );
+        setFormFeedback(
+          createForm,
+          `Created calendar "${calendar.name}" with id ${calendar.id}.`,
+          "success"
+        );
+        createForm.reset();
+      } catch (error) {
+        setFormFeedback(createForm, error.message, "error");
+      }
+    });
+  }
+
+  const permissionForm = document.querySelector("[data-permission-create]");
+  if (permissionForm) {
+    permissionForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!token) {
+        setFormFeedback(permissionForm, "Sign in to assign permissions.", "error");
+        return;
+      }
+
+      const formData = new FormData(permissionForm);
+      const calendarId = String(formData.get("calendarId") || "").trim();
+      const userId = String(formData.get("userId") || "").trim();
+      const permissions = getSelectedPermissions(permissionForm);
+
+      if (!calendarId || !userId) {
+        setFormFeedback(permissionForm, "Calendar ID and User ID are required.", "error");
+        return;
+      }
+      if (permissions.length === 0) {
+        setFormFeedback(permissionForm, "Select at least one permission.", "error");
+        return;
+      }
+
+      try {
+        await postJson(
+          "/api/permissions",
+          {
+            calendarId,
+            userId,
+            permissions
+          },
+          { token }
+        );
+        setFormFeedback(permissionForm, "Permissions assigned successfully.", "success");
+        permissionForm.reset();
+      } catch (error) {
+        setFormFeedback(permissionForm, error.message, "error");
+      }
+    });
+  }
+}
+
+function initSharingControls() {
+  const authState = readAuthState();
+  const token = authState?.token;
+  const shareForm = document.querySelector("[data-share-link]");
+  if (!shareForm) {
+    return;
+  }
+
+  shareForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!token) {
+      setFormFeedback(shareForm, "Sign in to generate a share link.", "error");
+      return;
+    }
+
+    const formData = new FormData(shareForm);
+    const calendarId = String(formData.get("calendarId") || "").trim();
+    const permissions = getSelectedPermissions(shareForm);
+
+    if (!calendarId) {
+      setFormFeedback(shareForm, "Calendar ID is required.", "error");
+      return;
+    }
+    if (permissions.length === 0) {
+      setFormFeedback(shareForm, "Select at least one permission.", "error");
+      return;
+    }
+
+    try {
+      const response = await postJson(
+        "/api/sharing/link",
+        {
+          calendarId,
+          permissions
+        },
+        { token }
+      );
+      setFormFeedback(
+        shareForm,
+        `Share link ready: ${response.link}`,
+        "success"
+      );
+    } catch (error) {
+      setFormFeedback(shareForm, error.message, "error");
+    }
+  });
+}
+
 function initAuthUI({ storage } = {}) {
   const modal = document.getElementById("auth-modal");
   const triggers = document.querySelectorAll("[data-auth-trigger]");
@@ -718,6 +883,9 @@ async function init(selectorOverrides = {}) {
     setSection(selectors.operationalAlerts, renderEmptyState({ title: "Operational Alerts", message: signInMessage }));
   }
 
+  initCalendarControls();
+  initSharingControls();
+
   return { hydrated: true };
 }
 
@@ -738,8 +906,11 @@ if (typeof module !== "undefined") {
     fetchJson,
     init,
     initAuthUI,
+    initCalendarControls,
+    initSharingControls,
     postJson,
     readAuthState,
+    getSelectedPermissions,
     renderAccessMatrix,
     renderAuthStatus,
     renderCalendarView,
@@ -757,6 +928,7 @@ if (typeof module !== "undefined") {
     renderOperationalAlerts,
     renderOrganizationStats,
     renderProfile,
+    setFormFeedback,
     updateAuthStatus,
     writeAuthState
   };

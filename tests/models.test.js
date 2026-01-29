@@ -5,6 +5,7 @@ const { createEvent, validateEvent } = require("../server/models/event");
 const { createOrganization, validateOrganization } = require("../server/models/organization");
 const { createRole, validateRole } = require("../server/models/role");
 const { createRoleAssignment, validateRoleAssignment } = require("../server/models/roleAssignment");
+const { createShareToken, validateShareToken } = require("../server/models/shareToken");
 const { createUser, validateUser } = require("../server/models/user");
 
 describe("domain models", () => {
@@ -580,5 +581,47 @@ describe("domain models", () => {
       assignedAt: "2024-01-01T00:00:00.000Z"
     });
     expect(validAssignment.valid).toBe(true);
+  });
+
+  test("createShareToken validates share permissions", () => {
+    expect(() => createShareToken()).toThrow("Validation failed");
+
+    const token = createShareToken({
+      id: "share-1",
+      calendarId: "cal-1",
+      token: "token",
+      createdBy: "user-1",
+      permissions: ["View Calendar"],
+      createdAt: "2024-02-01T00:00:00.000Z"
+    });
+    expect(token.createdAt).toBe("2024-02-01T00:00:00.000Z");
+
+    const missingPermissions = validateShareToken({
+      id: "share-2",
+      calendarId: "cal-1",
+      token: "token",
+      createdBy: "user-1",
+      permissions: []
+    });
+    expect(missingPermissions.valid).toBe(false);
+
+    const invalidPermission = validateShareToken({
+      id: "share-3",
+      calendarId: "cal-1",
+      token: "token",
+      createdBy: "user-1",
+      permissions: ["Invalid"]
+    });
+    expect(invalidPermission.valid).toBe(false);
+
+    const validToken = validateShareToken({
+      id: "share-4",
+      calendarId: "cal-1",
+      token: "token",
+      createdBy: "user-1",
+      permissions: ["View Calendar - Times Only"],
+      expiresAt: "2024-02-02T00:00:00.000Z"
+    });
+    expect(validToken.valid).toBe(true);
   });
 });
