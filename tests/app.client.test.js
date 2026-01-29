@@ -34,7 +34,10 @@ const {
   getAccountHighlights,
   initCalendarControls,
   initSharingControls,
-  initProfileManagement
+  initProfileManagement,
+  loadCalendarOverview,
+  redirectToCalendar,
+  updateAccountSections
 } = require("../client/app");
 
 describe("client rendering", () => {
@@ -98,6 +101,17 @@ describe("client rendering", () => {
     expect(html).toContain('value="profile@example.com"');
     expect(html).toContain('value="org-9"');
     expect(html).toContain('value="admin"');
+  });
+
+  test("renderProfileManagement falls back to empty values", () => {
+    const html = renderProfileManagement({
+      name: "",
+      email: "",
+      organizationId: "",
+      role: ""
+    });
+
+    expect(html).toContain('value=""');
   });
 
   test("getAccountHighlights builds defaults when values are missing", () => {
@@ -215,7 +229,7 @@ describe("client rendering", () => {
   test("renderCalendarView shows empty message when no events", () => {
     const html = renderCalendarView({ label: "Calendar", summary: "Summary", events: [] });
 
-    expect(html).toContain("No events scheduled");
+    expect(html).toContain("No events scheduled yet");
   });
 
   test("renderCalendarView uses defaults when calendar is missing", () => {
@@ -225,25 +239,57 @@ describe("client rendering", () => {
     expect(html).toContain("No calendar data available.");
   });
 
+  test("renderCalendarView handles invalid reference dates", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "not-a-date",
+      events: []
+    });
+
+    expect(html).toContain("Calendar");
+  });
+
   test("renderCalendarView lists events when provided", () => {
     const html = renderCalendarView({
       label: "Calendar",
       summary: "Summary",
-      events: [{ title: "Event", day: "Mon" }]
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      events: [
+        { title: "Event A", startsAt: "2024-01-10T10:00:00.000Z" },
+        { title: "Event B", startsAt: "2024-01-12T08:00:00.000Z" }
+      ]
     });
 
-    expect(html).toContain("Event");
-    expect(html).toContain("Mon");
+    expect(html).toContain("Event A");
+    expect(html).toContain("Event B");
+    expect(html).toContain("Jan");
+  });
+
+  test("renderCalendarView shows overflow counts for busy days", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      events: [
+        { title: "Event A", startsAt: "2024-01-10T08:00:00.000Z" },
+        { title: "Event B", startsAt: "2024-01-10T09:00:00.000Z" },
+        { title: "Event C", startsAt: "2024-01-10T10:00:00.000Z" },
+        { title: "Event D", startsAt: "2024-01-10T11:00:00.000Z" }
+      ]
+    });
+
+    expect(html).toContain("+1 more");
   });
 
   test("renderCalendarView uses startsAt when day is missing", () => {
     const html = renderCalendarView({
       label: "Calendar",
       summary: "Summary",
-      events: [{ title: "Event", startsAt: "2024-01-01" }]
+      events: [{ title: "Event", startsAt: "2024-01-01T09:00:00.000Z" }]
     });
 
-    expect(html).toContain("2024-01-01");
+    expect(html).toContain("Jan");
   });
 
   test("renderCalendarView falls back to unscheduled label", () => {
@@ -260,11 +306,10 @@ describe("client rendering", () => {
     const html = renderCalendarView({
       label: "Calendar",
       summary: "Summary",
-      featuredEvents: [{ title: "Featured", day: "Tue" }]
+      featuredEvents: [{ title: "Featured" }]
     });
 
     expect(html).toContain("Featured");
-    expect(html).toContain("Tue");
   });
 
   test("renderEventList handles empty items", () => {
@@ -290,7 +335,16 @@ describe("client rendering", () => {
     });
 
     expect(html).toContain("Event A · Mon");
-    expect(html).toContain("Event B");
+    expect(html).toContain("Event B · Unscheduled");
+  });
+
+  test("renderEventList uses unscheduled label for invalid dates", () => {
+    const html = renderEventList({
+      title: "Events",
+      items: [{ title: "Event C", startsAt: "not-a-date" }]
+    });
+
+    expect(html).toContain("Event C · Unscheduled");
   });
 
   test("renderAccessMatrix handles empty and entries", () => {
@@ -1131,6 +1185,55 @@ describe("client data loading", () => {
     expect(result.status).toBe("ok");
   });
 
+  test("fetchJson sends auth header when token is provided", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" })
+      })
+    );
+
+    await fetchJson("/secure", { token: "token-123" });
+
+    expect(global.fetch).toHaveBeenCalledWith("/secure", {
+      headers: {
+        Authorization: "Bearer token-123"
+      }
+    });
+  });
+
+  test("loadCalendarOverview returns null when token is missing", async () => {
+    const result = await loadCalendarOverview(null);
+
+    expect(result).toBeNull();
+  });
+
+  test("loadCalendarOverview returns calendars and events", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) => {
+      if (url.startsWith("/api/calendars")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary" }] })
+        });
+      }
+      if (url.startsWith("/api/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ events: [{ title: "Event", startsAt: "2024-01-01T09:00:00.000Z" }] })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    const result = await loadCalendarOverview({ token: "token" });
+
+    expect(result.primaryCalendar.name).toBe("Primary");
+    expect(result.events).toHaveLength(1);
+
+    global.fetch = originalFetch;
+  });
+
   test("postJson throws with API error message", async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
@@ -1222,6 +1325,19 @@ describe("client data loading", () => {
     expect(document.getElementById("profile-management").innerHTML).toContain("Sign in to update your account details");
   });
 
+  test("init skips calendar placeholders when calendar elements are missing", async () => {
+    window.localStorage.removeItem("tylendar-auth");
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="profile-management"></div>
+    `;
+
+    const result = await init();
+
+    expect(result.hydrated).toBe(true);
+    expect(document.getElementById("profile-card").innerHTML).toContain("Sign in");
+  });
+
   test("init hydrates signed-in sections", async () => {
     document.body.innerHTML = `
       <div id="profile-card"></div>
@@ -1243,6 +1359,53 @@ describe("client data loading", () => {
       <div id="operational-alerts"></div>
     `;
 
+    const originalFetch = global.fetch;
+    const fetchSpy = jest.fn((url) => {
+      if (url.startsWith("/api/calendars")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              calendars: [
+                { id: "cal-1", name: "Primary Calendar" },
+                { id: "cal-2", name: "Secondary Calendar" }
+              ]
+            })
+        });
+      }
+      if (url.startsWith("/api/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            events: [{ title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+          })
+        });
+      }
+      if (url.startsWith("/api/monitoring/observability")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ uptimeSeconds: 0, latencyP95Ms: null, errorRate: null, highlights: [] })
+        });
+      }
+      if (url.startsWith("/api/monitoring/metrics")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ users: 0, events: 0, uptimeSeconds: 0 })
+        });
+      }
+      if (url.startsWith("/api/monitoring/alerts")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ alerts: [] })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({})
+      });
+    });
+    global.fetch = fetchSpy;
+
     window.localStorage.setItem(
       "tylendar-auth",
       JSON.stringify({
@@ -1257,8 +1420,12 @@ describe("client data loading", () => {
     expect(document.getElementById("home-highlights").innerHTML).toContain("user@example.com");
     expect(document.getElementById("org-dashboard").innerHTML).toContain("org-1");
     expect(document.getElementById("profile-management").innerHTML).toContain("Manage profile");
+    expect(document.getElementById("calendar-view").innerHTML).toContain("Primary Calendar");
+    expect(document.getElementById("calendar-view").innerHTML).toContain("2 calendars connected");
+    expect(document.getElementById("calendar-view").innerHTML).toContain("Kickoff");
 
     window.localStorage.removeItem("tylendar-auth");
+    global.fetch = originalFetch;
   });
 
   test("init handles signed-in users without an organization", async () => {
@@ -1280,6 +1447,65 @@ describe("client data loading", () => {
     expect(document.getElementById("org-dashboard").innerHTML).toContain("No organization data is available yet");
 
     window.localStorage.removeItem("tylendar-auth");
+  });
+
+  test("init handles empty calendar overview data", async () => {
+    document.body.innerHTML = `
+      <div id="calendar-view"></div>
+      <div id="event-list"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({
+        token: "token",
+        user: { name: "Test", email: "user@example.com" }
+      })
+    );
+
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(url.startsWith("/api/calendars") ? { calendars: [] } : { events: [] })
+      })
+    );
+
+    await init();
+
+    expect(document.getElementById("calendar-view").innerHTML).toContain("No calendars available yet");
+
+    window.localStorage.removeItem("tylendar-auth");
+    global.fetch = originalFetch;
+  });
+
+  test("init handles calendar overview failures", async () => {
+    document.body.innerHTML = `
+      <div id="calendar-view"></div>
+      <div id="event-list"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({
+        token: "token",
+        user: { name: "Test", email: "user@example.com" }
+      })
+    );
+
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false
+      })
+    );
+
+    await init();
+
+    expect(document.getElementById("calendar-view").innerHTML).toContain("Unable to load your calendar right now");
+
+    window.localStorage.removeItem("tylendar-auth");
+    global.fetch = originalFetch;
   });
 
   test("init uses fallback account highlights when email or org are missing", async () => {
@@ -1353,6 +1579,26 @@ describe("auth utilities", () => {
 
     clearAuthState(storage);
     expect(readAuthState(storage)).toBeNull();
+  });
+
+  test("redirectToCalendar uses assign when available", () => {
+    const assign = jest.fn();
+    const result = redirectToCalendar({ assign });
+
+    expect(result).toBe(true);
+    expect(assign).toHaveBeenCalledWith("/calendar");
+  });
+
+  test("redirectToCalendar returns false on invalid or failing location", () => {
+    const failingLocation = { assign: jest.fn(() => { throw new Error("fail"); }) };
+    const result = redirectToCalendar(failingLocation);
+
+    expect(result).toBe(false);
+    expect(redirectToCalendar(null)).toBe(false);
+  });
+
+  test("redirectToCalendar skips jsdom navigation on default location", () => {
+    expect(redirectToCalendar()).toBe(false);
   });
 
   test("buildAuthPayload maps login and register forms", () => {
@@ -1433,6 +1679,7 @@ describe("auth utilities", () => {
     `;
 
     const storage = createStorage();
+    const originalFetch = global.fetch;
     global.fetch = jest.fn(() =>
       Promise.resolve({
         ok: true,
@@ -1450,6 +1697,48 @@ describe("auth utilities", () => {
 
     expect(readAuthState(storage).token).toBe("token");
     expect(document.querySelector("[data-auth-status]").textContent).toContain("Signed in as");
+  });
+
+  test("initAuthUI handles registration flow", async () => {
+    document.body.innerHTML = `
+      <div class="nav-actions">
+        <span data-auth-status></span>
+        <button data-auth-trigger="register">Register</button>
+      </div>
+      <div id="auth-modal" aria-hidden="true">
+        <div data-auth-close></div>
+        <button data-auth-close></button>
+        <button data-auth-tab="login"></button>
+        <button data-auth-tab="register"></button>
+        <form data-auth-panel="register">
+          <input name="name" value="User" />
+          <input name="email" value="user@example.com" />
+          <input name="password" value="Password123!" />
+          <input name="organizationId" value="" />
+          <input name="role" value="member" />
+          <button type="submit">Register</button>
+        </form>
+        <div data-auth-feedback></div>
+      </div>
+    `;
+
+    const storage = createStorage();
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ token: "token", user: { name: "User" } })
+      })
+    );
+    initAuthUI({ storage });
+
+    const form = document.querySelector('form[data-auth-panel="register"]');
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(readAuthState(storage).token).toBe("token");
+    global.fetch = originalFetch;
   });
 
   test("initAuthUI uses email fallback in success message", async () => {
@@ -1499,6 +1788,55 @@ describe("auth utilities", () => {
     const trigger = document.querySelector("[data-auth-trigger]");
     expect(trigger.disabled).toBe(true);
     expect(trigger.classList.contains("is-hidden")).toBe(true);
+  });
+
+  test("updateAccountSections populates profile form fields", () => {
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="home-highlights"></div>
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="" />
+          <input name="email" value="" />
+          <input name="organizationId" value="" />
+          <input name="role" value="" />
+        </form>
+      </div>
+    `;
+
+    updateAccountSections({
+      name: "Pat",
+      email: "pat@example.com",
+      organizationId: "org-12",
+      role: "owner"
+    });
+
+    const form = document.querySelector("[data-profile-form]");
+    expect(form.querySelector('[name="name"]').value).toBe("Pat");
+    expect(form.querySelector('[name="email"]').value).toBe("pat@example.com");
+    expect(form.querySelector('[name="organizationId"]').value).toBe("org-12");
+    expect(form.querySelector('[name="role"]').value).toBe("owner");
+  });
+
+  test("updateAccountSections renders profile management when form is missing", () => {
+    document.body.innerHTML = `
+      <div id="profile-management"></div>
+    `;
+
+    updateAccountSections({ name: "No Form", email: "noform@example.com" });
+
+    expect(document.getElementById("profile-management").innerHTML).toContain("Manage profile");
+  });
+
+  test("updateAccountSections handles missing profile management element", () => {
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="home-highlights"></div>
+    `;
+
+    updateAccountSections({ name: "Missing", email: "missing@example.com" });
+
+    expect(document.getElementById("profile-card").innerHTML).toContain("Missing");
   });
 
   test("updateAuthStatus leaves triggers enabled when signed out", () => {

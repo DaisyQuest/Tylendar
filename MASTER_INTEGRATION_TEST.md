@@ -18,6 +18,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Confirm Login/Register modal submits to auth APIs, surfaces inline feedback, and updates signed-in status.
    - Confirm registration succeeds without providing an organization ID and persists an optional org when supplied.
    - Verify new users receive a private default calendar and self-only permissions by default.
+   - Confirm newly registered users land on the full-screen month calendar view showing their primary calendar by default.
    - Validate User Management + Profile UI sections render notifications and activity feed.
    - Confirm feature flags toggle profile modules without breaking navigation.
    - Update profile details via the profile management form and confirm changes persist in the profile summary and session state.

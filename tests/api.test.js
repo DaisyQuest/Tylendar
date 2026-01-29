@@ -373,4 +373,128 @@ describe("API modules", () => {
     const developer = await request(app).get("/api/developer/portal");
     expect(developer.body.headline).toBe("Developer Portal");
   });
+
+  test("calendar auto-provisioning and event visibility enforcement", async () => {
+    const repositories = createRepositories({ useInMemory: true });
+    await createUser(repositories, {
+      id: "user-9",
+      name: "Auto Calendar User",
+      email: "auto@example.com"
+    });
+    await repositories.calendars.create({
+      id: "cal-locked",
+      name: "Locked Calendar",
+      ownerId: "org-locked",
+      ownerType: "organization",
+      isPublic: false
+    });
+    await repositories.events.create({
+      id: "evt-locked",
+      title: "Private Event",
+      calendarIds: ["cal-locked"],
+      startsAt: new Date().toISOString(),
+      endsAt: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+      createdBy: "user-9"
+    });
+
+    const app = createApp({ repositories });
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "auto@example.com",
+      password: DEFAULT_PASSWORD
+    });
+    const token = login.body.token;
+
+    const calendarList = await request(app)
+      .get("/api/calendars")
+      .set("Authorization", `Bearer ${token}`);
+    expect(calendarList.body.calendars).toHaveLength(1);
+    expect(calendarList.body.calendars[0].ownerId).toBe("user-9");
+
+    const deniedCalendar = await request(app)
+      .get("/api/calendars/cal-locked")
+      .set("Authorization", `Bearer ${token}`);
+    expect(deniedCalendar.status).toBe(403);
+
+    const eventList = await request(app)
+      .get("/api/events?calendarId=cal-locked")
+      .set("Authorization", `Bearer ${token}`);
+    expect(eventList.status).toBe(403);
+  });
+
+  test("calendar visibility honors times-only permissions", async () => {
+    const repositories = createRepositories({ useInMemory: true });
+    await createUser(repositories, {
+      id: "user-10",
+      name: "Times Only User",
+      email: "times@example.com"
+    });
+    await repositories.calendars.create({
+      id: "cal-times",
+      name: "Times Calendar",
+      ownerId: "org-1",
+      ownerType: "organization",
+      isPublic: false
+    });
+    await repositories.calendarPermissions.create({
+      id: "perm-times",
+      calendarId: "cal-times",
+      userId: "user-10",
+      grantedBy: "user-10",
+      permissions: ["View Calendar - Times Only"]
+    });
+    await repositories.calendars.create({
+      id: "cal-add",
+      name: "Add Calendar",
+      ownerId: "org-1",
+      ownerType: "organization",
+      isPublic: false
+    });
+    await repositories.calendarPermissions.create({
+      id: "perm-add",
+      calendarId: "cal-add",
+      userId: "user-10",
+      grantedBy: "user-10",
+      permissions: ["Add to Calendar"]
+    });
+    await repositories.events.create({
+      id: "evt-times",
+      title: "Times Event",
+      calendarIds: ["cal-times"],
+      startsAt: new Date().toISOString(),
+      endsAt: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+      createdBy: "user-10"
+    });
+    await repositories.events.create({
+      id: "evt-add",
+      title: "Add Event",
+      calendarIds: ["cal-add"],
+      startsAt: new Date().toISOString(),
+      endsAt: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+      createdBy: "user-10"
+    });
+
+    const app = createApp({ repositories });
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "times@example.com",
+      password: DEFAULT_PASSWORD
+    });
+    const token = login.body.token;
+
+    const calendarList = await request(app)
+      .get("/api/calendars")
+      .set("Authorization", `Bearer ${token}`);
+    const calendarIds = calendarList.body.calendars.map((calendar) => calendar.id);
+    expect(calendarIds).toEqual(expect.arrayContaining(["cal-times", "cal-add"]));
+
+    const eventList = await request(app)
+      .get("/api/events?calendarId=cal-times")
+      .set("Authorization", `Bearer ${token}`);
+    expect(eventList.body.events).toHaveLength(1);
+    const addEventList = await request(app)
+      .get("/api/events?calendarId=cal-add")
+      .set("Authorization", `Bearer ${token}`);
+    expect(addEventList.body.events).toHaveLength(1);
+  });
 });
