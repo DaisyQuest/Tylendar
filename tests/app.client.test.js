@@ -312,6 +312,21 @@ describe("client rendering", () => {
     expect(html).toContain("Featured");
   });
 
+  test("renderCalendarView accepts unscheduled events", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-15T00:00:00.000Z",
+      events: [
+        { title: "Scheduled", startsAt: "2024-01-20T10:00:00.000Z" },
+        { title: "Unscheduled" }
+      ]
+    });
+
+    expect(html).toContain("Scheduled");
+    expect(html).toContain("Summary");
+  });
+
   test("renderEventList handles empty items", () => {
     const html = renderEventList({ title: "Events", items: [] });
 
@@ -350,14 +365,93 @@ describe("client rendering", () => {
   test("renderAccessMatrix handles empty and entries", () => {
     const emptyHtml = renderAccessMatrix([]);
     const defaultHtml = renderAccessMatrix();
+    const nullHtml = renderAccessMatrix(null);
     const filledHtml = renderAccessMatrix([
-      { user: "A", calendar: "Cal", permissions: ["View"] }
+      {
+        user: "A",
+        calendar: "Cal",
+        permissions: ["View Calendar", "Manage Calendar"],
+        status: "Active",
+        lastUpdated: "Today"
+      }
     ]);
 
-    expect(emptyHtml).toContain("No access entries");
-    expect(defaultHtml).toContain("No access entries");
-    expect(filledHtml).toContain("Access Assignments");
-    expect(filledHtml).toContain("View");
+    expect(emptyHtml).toContain("Permission control center");
+    expect(emptyHtml).toContain("No one else has access");
+    expect(defaultHtml).toContain("No one else has access");
+    expect(nullHtml).toContain("No one else has access");
+    expect(filledHtml).toContain("Permission coverage");
+    expect(filledHtml).toContain("Manager");
+    expect(filledHtml).toContain("Manage Calendar");
+    expect(filledHtml).toContain("Active");
+  });
+
+  test("renderAccessMatrix renders pending requests, notes, and status variants", () => {
+    const html = renderAccessMatrix({
+      entries: [
+        {
+          user: "B",
+          calendar: "Ops",
+          permissions: ["Comment on Calendar"],
+          expiresAt: "2024-05-01"
+        },
+        {
+          user: "C",
+          calendar: "Ops",
+          permissions: ["View Calendar - Times Only"],
+          status: "Paused"
+        },
+        {
+          user: "D",
+          calendar: "Ops",
+          permissions: ["View Calendar"],
+          updatedAt: "Yesterday"
+        },
+        {
+          user: "E",
+          calendar: "Ops",
+          permissions: ["Add to Calendar"]
+        },
+        {
+          user: "F",
+          calendar: "",
+          permissions: []
+        }
+      ],
+      pendingRequests: [
+        {
+          user: "Dana",
+          calendar: "Ops",
+          permissions: ["View Calendar"],
+          requestedAt: "Today"
+        },
+        {
+          user: "Evan",
+          calendar: "Ops",
+          requestedAt: "Yesterday"
+        }
+      ],
+      defaults: {
+        visibility: "Org-only visibility",
+        approvals: "Manager approval required",
+        notifications: "Weekly digests"
+      },
+      notes: ["Review external access quarterly."]
+    });
+
+    expect(html).toContain("Pending access requests");
+    expect(html).toContain("Requested View Calendar");
+    expect(html).toContain("Requested access");
+    expect(html).toContain("Org-only visibility");
+    expect(html).toContain("Review external access quarterly.");
+    expect(html).toContain("Commenter");
+    expect(html).toContain("Time-only viewer");
+    expect(html).toContain("Viewer");
+    expect(html).toContain("Contributor");
+    expect(html).toContain("No access");
+    expect(html).toContain("Expiring soon");
+    expect(html).toContain("Paused");
+    expect(html).toContain("Active");
   });
 
   test("renderMessageBoard handles empty and messages", () => {
@@ -1234,6 +1328,33 @@ describe("client data loading", () => {
     global.fetch = originalFetch;
   });
 
+  test("loadCalendarOverview handles missing calendars and events", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) => {
+      if (url.startsWith("/api/calendars")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({})
+        });
+      }
+      if (url.startsWith("/api/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({})
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    const result = await loadCalendarOverview({ token: "token" });
+
+    expect(result.calendars).toEqual([]);
+    expect(result.primaryCalendar).toBeNull();
+    expect(result.events).toEqual([]);
+
+    global.fetch = originalFetch;
+  });
+
   test("postJson throws with API error message", async () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({
@@ -1423,6 +1544,46 @@ describe("client data loading", () => {
     expect(document.getElementById("calendar-view").innerHTML).toContain("Primary Calendar");
     expect(document.getElementById("calendar-view").innerHTML).toContain("2 calendars connected");
     expect(document.getElementById("calendar-view").innerHTML).toContain("Kickoff");
+
+    window.localStorage.removeItem("tylendar-auth");
+    global.fetch = originalFetch;
+  });
+
+  test("init renders singular calendar summary", async () => {
+    document.body.innerHTML = `
+      <div id="calendar-view"></div>
+      <div id="event-list"></div>
+      <div id="access-matrix"></div>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({
+        token: "token",
+        user: { name: "Solo", email: "solo@example.com" }
+      })
+    );
+
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) => {
+      if (url.startsWith("/api/calendars")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary" }] })
+        });
+      }
+      if (url.startsWith("/api/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ events: [] })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    await init();
+
+    expect(document.getElementById("calendar-view").innerHTML).toContain("1 calendar connected.");
 
     window.localStorage.removeItem("tylendar-auth");
     global.fetch = originalFetch;
@@ -1816,6 +1977,28 @@ describe("auth utilities", () => {
     expect(form.querySelector('[name="email"]').value).toBe("pat@example.com");
     expect(form.querySelector('[name="organizationId"]').value).toBe("org-12");
     expect(form.querySelector('[name="role"]').value).toBe("owner");
+  });
+
+  test("updateAccountSections ignores missing profile fields", () => {
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="" />
+          <input name="email" value="" />
+        </form>
+      </div>
+    `;
+
+    updateAccountSections({
+      name: "Taylor",
+      email: "taylor@example.com",
+      organizationId: "org-missing",
+      role: "member"
+    });
+
+    const form = document.querySelector("[data-profile-form]");
+    expect(form.querySelector('[name="name"]').value).toBe("Taylor");
+    expect(form.querySelector('[name="email"]').value).toBe("taylor@example.com");
   });
 
   test("updateAccountSections renders profile management when form is missing", () => {
