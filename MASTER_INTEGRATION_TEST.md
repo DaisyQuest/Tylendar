@@ -15,6 +15,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Register a user with email + password, authenticate session, update profile, verify permissions.
    - Validate login rejects invalid credentials and accepts password-based sign-ins.
    - Confirm Login/Register modal submits to auth APIs, surfaces inline feedback, and updates signed-in status.
+   - Confirm registration succeeds without providing an organization ID and persists an optional org when supplied.
    - Validate User Management + Profile UI sections render notifications and activity feed.
    - Confirm feature flags toggle profile modules without breaking navigation.
    - Verify profile edits persist across session refresh and re-login.

@@ -28,6 +28,14 @@ describe("auth API", () => {
     });
     expect(unknownOrg.status).toBe(404);
 
+    const registerNoOrg = await request(app).post("/api/auth/register").send({
+      name: "Solo User",
+      email: "solo@example.com",
+      password: "Password123!"
+    });
+    expect(registerNoOrg.status).toBe(201);
+    expect(registerNoOrg.body.user.organizationId).toBeUndefined();
+
     const register = await request(app).post("/api/auth/register").send({
       name: "New User",
       email: "newuser@example.com",

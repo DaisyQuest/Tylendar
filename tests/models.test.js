@@ -14,11 +14,17 @@ describe("domain models", () => {
     const user = createUser({
       id: "u1",
       name: "Test User",
-      email: "test@example.com",
-      organizationId: "org-1"
+      email: "test@example.com"
     });
     expect(user.role).toBe("member");
     expect(validateUser(user).valid).toBe(true);
+
+    const userWithoutOrg = createUser({
+      id: "u1b",
+      name: "No Org",
+      email: "noorg@example.com"
+    });
+    expect(userWithoutOrg.organizationId).toBeUndefined();
 
     const invalidRole = validateUser({
       id: "u2",
@@ -29,6 +35,14 @@ describe("domain models", () => {
       passwordHash: 42
     });
     expect(invalidRole.valid).toBe(false);
+
+    const invalidOrg = validateUser({
+      id: "u2b",
+      name: "Bad Org",
+      email: "badorg@example.com",
+      organizationId: 42
+    });
+    expect(invalidOrg.valid).toBe(false);
 
     const userWithRole = createUser({
       id: "u3",
