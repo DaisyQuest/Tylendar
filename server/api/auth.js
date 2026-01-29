@@ -26,6 +26,18 @@ function sanitizeUser(user) {
   return safeUser;
 }
 
+function applySessionCookie(res, token) {
+  res.cookie("session", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
+  });
+}
+
+function clearSessionCookie(res) {
+  res.clearCookie("session");
+}
+
 function validateLoginPayload({ email, password }) {
   const errors = [];
   validateRequiredString(email, "email", errors);
@@ -73,6 +85,7 @@ function createAuthRouter({
     }
 
     const session = sessionStore.createSession({ userId: user.id });
+    applySessionCookie(res, session.token);
     await auditService.record({
       action: "login",
       actorId: user.id,
@@ -132,6 +145,7 @@ function createAuthRouter({
     }
 
     const session = sessionStore.createSession({ userId: user.id });
+    applySessionCookie(res, session.token);
     await auditService.record({
       action: "register",
       actorId: user.id,
@@ -145,6 +159,7 @@ function createAuthRouter({
 
   router.post("/logout", requireAuth, asyncHandler(async (req, res) => {
     sessionStore.deleteSession(req.session.token);
+    clearSessionCookie(res);
     await auditService.record({
       action: "logout",
       actorId: req.user.id,

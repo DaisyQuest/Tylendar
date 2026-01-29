@@ -51,6 +51,7 @@
 - [x] **T-0601**: Unit tests for all domain models (95%+ branch coverage).
 - [x] **T-0602**: Unit tests for permission enforcement.
 - [x] **T-0603**: Integration tests for API endpoints.
+- [x] **T-0603a**: Integration coverage for session-cookie authenticated API access.
 - [x] **T-0604**: UI component tests.
 - [x] **T-0605**: Master Integration Test expansion to include all features.
 

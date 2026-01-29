@@ -61,6 +61,13 @@ describe("auth API", () => {
     expect(register.body.token).toBeDefined();
     expect(register.body.user.email).toBe("newuser@example.com");
     expect(register.body.user.passwordHash).toBeUndefined();
+    const registerCookie = register.headers["set-cookie"]?.[0];
+    expect(registerCookie).toContain("session=");
+    const registerSessionCookie = registerCookie.split(";")[0];
+    const registerSession = await request(app)
+      .get("/api/auth/session")
+      .set("Cookie", registerSessionCookie);
+    expect(registerSession.body.user.email).toBe("newuser@example.com");
 
     const duplicate = await request(app).post("/api/auth/register").send({
       name: "New User",
@@ -91,6 +98,13 @@ describe("auth API", () => {
     });
     expect(login.body.token).toBeDefined();
     expect(login.body.user.id).toBe("user-1");
+    const loginCookie = login.headers["set-cookie"]?.[0];
+    expect(loginCookie).toContain("session=");
+    const loginSessionCookie = loginCookie.split(";")[0];
+    const cookieSession = await request(app)
+      .get("/api/auth/session")
+      .set("Cookie", loginSessionCookie);
+    expect(cookieSession.body.user.id).toBe("user-1");
 
     const session = await request(app)
       .get("/api/auth/session")
