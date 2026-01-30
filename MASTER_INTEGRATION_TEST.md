@@ -44,6 +44,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Create, update, delete events across multiple calendars.
    - Validate event metadata (time zone, reminders, attendees) persists across edits.
    - Confirm event visibility honors calendar-level permissions and shared ownership.
+   - Create an event using session-cookie authentication and verify it appears in the calendar-scoped event list.
    - Launch the in-calendar **New event** modal, complete scheduling details, and confirm the modal closes after event creation.
    - Use the full-screen **Event Studio** from navigation to create events and manage/deleted scheduled entries.
 6. **MessageBoard Comments**
@@ -53,6 +54,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 7. **Calendar Views**
    - Month/2-week/week/day rendering with event correctness.
    - Verify navigation between views preserves selected date and filters.
+   - Fetch calendars with session-cookie authentication and confirm the primary calendar renders with newly created events.
+   - Confirm session-cookie authentication hydrates the calendar view even when local auth storage is empty.
    - Confirm the calendar grid renders time slots, all-day row, and focus-day counts with an agenda sidebar.
    - Validate the personalized calendar header shows owner, availability, search/filter tools, and quick actions.
    - Confirm focus area panels and sync/time zone context render in the calendar spotlight section.
