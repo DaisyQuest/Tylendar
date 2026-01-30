@@ -819,9 +819,13 @@ function getSelectedPermissions(form) {
   return Array.from(form.querySelectorAll('input[name="permissions"]:checked')).map((input) => input.value);
 }
 
-async function fetchJson(url, { token } = {}) {
+async function fetchJson(url, { token, includeCredentials } = {}) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await fetch(url, { headers });
+  const options = { headers };
+  if (includeCredentials) {
+    options.credentials = "same-origin";
+  }
+  const response = await fetch(url, options);
   if (!response.ok) {
     throw new Error(`Failed to load ${url}`);
   }
@@ -1242,6 +1246,28 @@ function updateAccountSections(user) {
   }
 }
 
+async function resolveAuthState(storage) {
+  const storedState = readAuthState(storage);
+  if (storedState?.token) {
+    return storedState;
+  }
+  try {
+    const session = await fetchJson("/api/auth/session", { includeCredentials: true });
+    if (session?.session?.token && session?.user) {
+      const nextState = {
+        token: session.session.token,
+        user: session.user,
+        permissions: session.permissions || []
+      };
+      writeAuthState(nextState, storage);
+      return nextState;
+    }
+  } catch (error) {
+    return storedState;
+  }
+  return storedState;
+}
+
 async function loadCalendarOverview(authState) {
   if (!authState?.token) {
     return null;
@@ -1281,7 +1307,10 @@ async function init() {
     return { hydrated: false };
   }
 
-  const authState = readAuthState();
+  const authState = await resolveAuthState();
+  if (authState?.token) {
+    updateAuthStatus(authState);
+  }
   if (!authState?.token) {
     sections.forEach((id) => {
       const element = document.getElementById(id);
@@ -1436,6 +1465,7 @@ module.exports = {
   init,
   initAuthUI,
   readAuthState,
+  resolveAuthState,
   renderAccessMatrix,
   renderAuthStatus,
   renderCalendarView,

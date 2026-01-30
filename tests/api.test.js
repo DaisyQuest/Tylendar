@@ -497,4 +497,58 @@ describe("API modules", () => {
       .set("Authorization", `Bearer ${token}`);
     expect(addEventList.body.events).toHaveLength(1);
   });
+
+  test("calendar overview and event creation work with session cookies", async () => {
+    const repositories = createRepositories({ useInMemory: true });
+    const app = createApp({ repositories });
+
+    const register = await request(app).post("/api/auth/register").send({
+      name: "Calendar Viewer",
+      email: "viewer@example.com",
+      password: DEFAULT_PASSWORD
+    });
+    expect(register.status).toBe(201);
+
+    const sessionCookie = register.headers["set-cookie"].find((cookie) => cookie.startsWith("session="));
+    expect(sessionCookie).toBeDefined();
+
+    const calendarList = await request(app)
+      .get("/api/calendars")
+      .set("Cookie", sessionCookie);
+    expect(calendarList.status).toBe(200);
+    expect(calendarList.body.calendars).toHaveLength(1);
+
+    const [defaultCalendar] = calendarList.body.calendars;
+    const userId = register.body.user.id;
+    expect(defaultCalendar.ownerId).toBe(userId);
+
+    const calendarDetail = await request(app)
+      .get(`/api/calendars/${defaultCalendar.id}`)
+      .set("Cookie", sessionCookie);
+    expect(calendarDetail.status).toBe(200);
+    expect(calendarDetail.body.id).toBe(defaultCalendar.id);
+
+    const startsAt = new Date();
+    const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
+    const eventResponse = await request(app)
+      .post("/api/events")
+      .set("Cookie", sessionCookie)
+      .send({
+        id: "evt-viewer-1",
+        title: "Calendar Kickoff",
+        calendarId: defaultCalendar.id,
+        calendarIds: [defaultCalendar.id],
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        createdBy: userId
+      });
+    expect(eventResponse.status).toBe(201);
+
+    const eventList = await request(app)
+      .get(`/api/events?calendarId=${defaultCalendar.id}`)
+      .set("Cookie", sessionCookie);
+    expect(eventList.status).toBe(200);
+    expect(eventList.body.events).toHaveLength(1);
+    expect(eventList.body.events[0].title).toBe("Calendar Kickoff");
+  });
 });

@@ -9,6 +9,7 @@ const {
   initAuthUI,
   postJson,
   readAuthState,
+  resolveAuthState,
   renderAccessMatrix,
   renderAuthStatus,
   renderCalendarView,
@@ -1968,6 +1969,22 @@ describe("client data loading", () => {
     });
   });
 
+  test("fetchJson sends credentials when requested", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "ok" })
+      })
+    );
+
+    await fetchJson("/auth/session", { includeCredentials: true });
+
+    expect(global.fetch).toHaveBeenCalledWith("/auth/session", {
+      credentials: "same-origin",
+      headers: {}
+    });
+  });
+
   test("loadCalendarOverview returns null when token is missing", async () => {
     const result = await loadCalendarOverview(null);
 
@@ -2025,6 +2042,68 @@ describe("client data loading", () => {
     expect(result.events).toEqual([]);
 
     global.fetch = originalFetch;
+  });
+
+  test("resolveAuthState returns stored auth state when token exists", async () => {
+    const storage = {
+      data: {},
+      getItem(key) {
+        return this.data[key] || null;
+      },
+      setItem(key, value) {
+        this.data[key] = value;
+      }
+    };
+    storage.setItem("tylendar-auth", JSON.stringify({ token: "stored-token", user: { id: "user-1" } }));
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({})
+      })
+    );
+
+    const result = await resolveAuthState(storage);
+
+    expect(result.token).toBe("stored-token");
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    global.fetch.mockRestore();
+  });
+
+  test("resolveAuthState hydrates from session endpoint when storage is empty", async () => {
+    const storage = {
+      data: {},
+      getItem(key) {
+        return this.data[key] || null;
+      },
+      setItem(key, value) {
+        this.data[key] = value;
+      }
+    };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          user: { id: "user-7", name: "Session User" },
+          session: { token: "session-token" },
+          permissions: ["View Calendar"]
+        })
+      })
+    );
+
+    const result = await resolveAuthState(storage);
+
+    expect(result.token).toBe("session-token");
+    expect(result.user.name).toBe("Session User");
+    expect(JSON.parse(storage.getItem("tylendar-auth")).token).toBe("session-token");
+    expect(global.fetch).toHaveBeenCalledWith("/api/auth/session", {
+      credentials: "same-origin",
+      headers: {}
+    });
+
+    global.fetch.mockRestore();
   });
 
   test("postJson throws with API error message", async () => {
@@ -2339,6 +2418,47 @@ describe("client data loading", () => {
 
     window.localStorage.removeItem("tylendar-auth");
     global.fetch = originalFetch;
+  });
+
+  test("init loads calendar view when only session cookie is present", async () => {
+    document.body.innerHTML = `
+      <div id="calendar-view"></div>
+    `;
+
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) => {
+      if (url === "/api/auth/session") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            user: { id: "user-42", name: "Cookie User" },
+            session: { token: "session-token" },
+            permissions: []
+          })
+        });
+      }
+      if (url.startsWith("/api/calendars")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ calendars: [{ id: "cal-42", name: "Primary Calendar" }] })
+        });
+      }
+      if (url.startsWith("/api/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ events: [{ title: "Kickoff", startsAt: "2024-01-01T09:00:00.000Z" }] })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    await init();
+
+    expect(document.getElementById("calendar-view").innerHTML).toContain("Primary Calendar");
+    expect(document.getElementById("calendar-view").innerHTML).toContain("Kickoff");
+
+    global.fetch = originalFetch;
+    window.localStorage.removeItem("tylendar-auth");
   });
 
   test("init uses fallback account highlights when email or org are missing", async () => {
