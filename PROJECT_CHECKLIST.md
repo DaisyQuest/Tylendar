@@ -35,8 +35,10 @@
 - [x] **T-0404**: Beautiful Organization Dashboard.
 - [x] **T-0405**: Calendar View (month/2-week/week/day).
   - [x] Calendar day action menus with event copy/paste workflows.
+  - [x] Calendar view switching controls for month/2-week/week/day.
 - [x] **T-0406**: Event List View (year/n-month/month/week/day).
 - [x] **T-0407**: Manage Access View (granular permission assignments, Access Command Center refresh).
+  - [x] Permission assignment forms load calendar lists with default selection.
 - [x] **T-0408**: MessageBoard Feature on Events (comments).
 - [x] **T-0409**: Calendar Embed Widget (calls main API).
 - [x] **T-0410**: Social Media Sharing / Export Features.

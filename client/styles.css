@@ -387,6 +387,7 @@ a {
   color: #4c3ca8;
   font-size: 0.75rem;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .calendar-pill__count {
@@ -402,6 +403,24 @@ a {
   color: #fff;
   border-color: transparent;
   box-shadow: 0 10px 20px rgba(123, 108, 246, 0.25);
+}
+
+.calendar-pill:focus {
+  outline: 2px solid rgba(123, 108, 246, 0.5);
+  outline-offset: 2px;
+}
+
+.calendar-view__panels {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.calendar-view__panel {
+  display: none;
+}
+
+.calendar-view__panel--active {
+  display: block;
 }
 
 .calendar-view__body {
@@ -738,6 +757,94 @@ a {
 .calendar-agenda p {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.calendar-range {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.calendar-range__day {
+  background: #fff;
+  border-radius: 16px;
+  padding: 0.75rem;
+  border: 1px solid rgba(123, 108, 246, 0.12);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.calendar-range__header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.calendar-range__events {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.calendar-day-plan {
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+}
+
+.calendar-day-plan__slot {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(123, 108, 246, 0.12);
+}
+
+.calendar-day-plan__slot:last-child {
+  border-bottom: none;
+}
+
+.calendar-selector {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.75rem;
+  background: #fff;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.calendar-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: #f7f4ff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.calendar-option__meta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.calendar-option__badge {
+  background: rgba(123, 108, 246, 0.15);
+  color: #4c3ca8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.calendar-option--active {
+  border-color: rgba(123, 108, 246, 0.5);
+  background: #fff;
+  box-shadow: 0 10px 20px rgba(123, 108, 246, 0.15);
 }
 
 .list {
