@@ -34,6 +34,7 @@
 - [x] **T-0403**: Beautiful User Dashboard.
 - [x] **T-0404**: Beautiful Organization Dashboard.
 - [x] **T-0405**: Calendar View (month/2-week/week/day).
+  - [x] Calendar day action menus with event copy/paste workflows.
 - [x] **T-0406**: Event List View (year/n-month/month/week/day).
 - [x] **T-0407**: Manage Access View (granular permission assignments, Access Command Center refresh).
 - [x] **T-0408**: MessageBoard Feature on Events (comments).

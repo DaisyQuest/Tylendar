@@ -31,15 +31,26 @@ const {
   renderProfileManagement,
   setFormFeedback,
   buildEventPayload,
+  buildPasteEventPayload,
+  addHourToTime,
+  copyTextToClipboard,
   createEventId,
+  createEventCopyPayload,
+  decodeMenuPayload,
+  encodeMenuPayload,
+  getTimeFromIso,
   parseEventDateTime,
   refreshEventList,
   setEventListFeedback,
+  showCalendarToast,
+  openEventModal,
+  closeEventModal,
   updateAuthStatus,
   writeAuthState,
   getSelectedPermissions,
   getAccountHighlights,
   initCalendarControls,
+  initCalendarDayMenus,
   initEventCreation,
   initEventManagement,
   initEventModal,
@@ -253,6 +264,20 @@ describe("client rendering", () => {
     expect(html).toContain("calendar-month__grid");
   });
 
+  test("renderCalendarView includes day action menus and modals", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    expect(html).toContain("calendar-day-menu");
+    expect(html).toContain("Paste from clipboard");
+    expect(html).toContain("calendar-copy-modal");
+  });
+
   test("renderCalendarView uses defaults when calendar is missing", () => {
     const html = renderCalendarView();
 
@@ -324,6 +349,28 @@ describe("client rendering", () => {
     expect(html).toContain("Untitled");
   });
 
+  test("renderCalendarView includes unscheduled agenda entries without titles", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      events: [{ description: "No date yet." }]
+    });
+
+    expect(html).toContain("Untitled");
+  });
+
+  test("renderCalendarView shows untitled focus slot events", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      events: [{ startsAt: "2024-01-05T09:00:00.000Z" }]
+    });
+
+    expect(html).toContain("calendar-event__title");
+    expect(html).toContain("Untitled");
+  });
+
   test("renderCalendarView shows overflow counts for busy days", () => {
     const html = renderCalendarView({
       label: "Calendar",
@@ -358,6 +405,92 @@ describe("client rendering", () => {
     });
 
     expect(html).toContain("Unscheduled");
+  });
+
+  test("encodeMenuPayload and decodeMenuPayload round trip event data", () => {
+    const encoded = encodeMenuPayload({ title: "Check-in" });
+    const decoded = decodeMenuPayload(encoded);
+
+    expect(decoded).toEqual({ title: "Check-in" });
+    expect(decodeMenuPayload("")).toBeNull();
+  });
+
+  test("encodeMenuPayload handles null and circular payloads", () => {
+    expect(encodeMenuPayload(null)).toBe("");
+    const circular = {};
+    circular.self = circular;
+    expect(encodeMenuPayload(circular)).toBe("");
+  });
+
+  test("decodeMenuPayload returns null for invalid data", () => {
+    expect(decodeMenuPayload("not-json")).toBeNull();
+  });
+
+  test("createEventCopyPayload filters fields and returns empty object", () => {
+    const payload = createEventCopyPayload(
+      { title: "Standup", description: "Daily", startsAt: "2024-01-01T09:00:00.000Z" },
+      ["title", "startsAt"]
+    );
+
+    expect(payload).toEqual({ title: "Standup", startsAt: "2024-01-01T09:00:00.000Z" });
+    expect(createEventCopyPayload(null, ["title"])).toEqual({});
+  });
+
+  test("createEventCopyPayload uses default fields array", () => {
+    expect(createEventCopyPayload({ title: "Note" })).toEqual({});
+  });
+
+  test("getTimeFromIso uses fallback and addHourToTime advances hours", () => {
+    expect(getTimeFromIso("", "07:45")).toBe("07:45");
+    expect(getTimeFromIso("not-a-date", "08:15")).toBe("08:15");
+    expect(getTimeFromIso("2024-01-01T14:30:00.000Z", "08:15")).toBe("14:30");
+    expect(addHourToTime("09:30")).toBe("10:30");
+  });
+
+  test("getTimeFromIso uses default fallback and addHourToTime defaults inputs", () => {
+    expect(getTimeFromIso("2024-01-01T00:00:00.000Z")).toBe("00:00");
+    expect(addHourToTime()).toBe("10:00");
+    expect(addHourToTime("23:45")).toBe("00:45");
+  });
+
+  test("buildPasteEventPayload applies date and defaults", () => {
+    const payload = buildPasteEventPayload(
+      {
+        id: "evt-copy",
+        title: "Copied",
+        startsAt: "2024-01-02T14:00:00.000Z",
+        endsAt: "2024-01-02T15:00:00.000Z",
+        calendarId: "cal-1"
+      },
+      { dateKey: "2024-02-10" }
+    );
+
+    expect(payload.startsAt).toBe("2024-02-10T14:00:00.000Z");
+    expect(payload.endsAt).toBe("2024-02-10T15:00:00.000Z");
+    expect(buildPasteEventPayload(null)).toBeNull();
+  });
+
+  test("buildPasteEventPayload preserves original dates and defaults title", () => {
+    const payload = buildPasteEventPayload({
+      id: "evt-2",
+      title: "",
+      startsAt: "2024-01-02T09:00:00.000Z",
+      endsAt: "2024-01-02T10:00:00.000Z",
+      calendarId: "cal-1"
+    });
+
+    expect(payload.startsAt).toBe("2024-01-02T09:00:00.000Z");
+    expect(payload.title).toBe("Copied event");
+  });
+
+  test("buildPasteEventPayload falls back to provided calendar id", () => {
+    const payload = buildPasteEventPayload(
+      { title: "Clipboard", startsAt: "2024-01-02T14:00:00.000Z" },
+      { dateKey: "2024-02-11", calendarId: "cal-2" }
+    );
+
+    expect(payload.calendarId).toBe("cal-2");
+    expect(payload.calendarIds).toEqual(["cal-2"]);
   });
 
   test("renderCalendarView treats invalid startsAt values as unscheduled", () => {
@@ -477,6 +610,20 @@ describe("client rendering", () => {
 
     expect(html).toContain("No permissions assigned");
     expect(html).toContain("Not updated yet");
+  });
+
+  test("renderAccessMatrix handles payload objects with missing fields", () => {
+    const html = renderAccessMatrix({ defaults: null, notes: null });
+
+    expect(html).toContain("No one else has access");
+  });
+
+  test("renderAccessMatrix defaults access levels for missing permissions", () => {
+    const html = renderAccessMatrix([
+      { user: "Jamie", calendar: "Ops" }
+    ]);
+
+    expect(html).toContain("No access");
   });
 
   test("renderAccessMatrix renders pending requests, notes, and status variants", () => {
@@ -903,6 +1050,38 @@ describe("profile management controls", () => {
     global.fetch.mockRestore();
   });
 
+  test("initProfileManagement falls back on empty error messages", async () => {
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { name: "Test", email: "user@example.com" } })
+    );
+    document.body.innerHTML = `
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Updated" />
+          <input name="email" value="updated@example.com" />
+          <input name="organizationId" value="" />
+          <input name="role" value="admin" />
+          <div class="form-feedback is-hidden" data-form-feedback></div>
+        </form>
+      </div>
+    `;
+
+    global.fetch = jest.fn(() => Promise.reject(Object.assign(new Error(), { message: "" })));
+
+    await initProfileManagement();
+
+    const form = document.querySelector("[data-profile-form]");
+    form.dispatchEvent(new Event("submit"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const feedback = form.querySelector("[data-form-feedback]");
+    expect(feedback.textContent).toContain("Profile update failed");
+
+    global.fetch.mockRestore();
+  });
+
   test("initProfileManagement re-renders when form is missing", async () => {
     window.localStorage.setItem(
       "tylendar-auth",
@@ -1113,6 +1292,50 @@ describe("calendar and sharing controls", () => {
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Created calendar");
   });
 
+  test("initCalendarControls defaults owner type and handles empty errors", async () => {
+    document.body.innerHTML = `
+      <form data-calendar-create>
+        <input name="name" value="My Calendar" />
+        <input name="ownerId" value="" />
+        <input type="checkbox" name="isPublic" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+        <button type="submit">Create</button>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: "cal-1", name: "My Calendar" })
+      })
+    );
+
+    initCalendarControls();
+    const form = document.querySelector("[data-calendar-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const [, request] = global.fetch.mock.calls[0];
+    const body = JSON.parse(request.body);
+    expect(body.ownerType).toBe("user");
+
+    global.fetch.mockRestore();
+
+    global.fetch = jest.fn(() => Promise.reject(Object.assign(new Error(), { message: "" })));
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Create failed");
+    global.fetch.mockRestore();
+  });
+
   test("initCalendarControls reports calendar creation failures", async () => {
     document.body.innerHTML = `
       <form data-calendar-create>
@@ -1214,6 +1437,34 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Select at least one permission");
+  });
+
+  test("initCalendarControls falls back on permission assignment errors", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <input name="calendarId" value="cal-1" />
+        <input name="userId" value="user-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() => Promise.reject(Object.assign(new Error(), { message: "" })));
+
+    initCalendarControls();
+    const form = document.querySelector("[data-permission-create]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Permission failed");
+
+    global.fetch.mockRestore();
   });
 
   test("initCalendarControls assigns permissions on success", async () => {
@@ -1408,6 +1659,33 @@ describe("calendar and sharing controls", () => {
 
     global.fetch.mockRestore();
   });
+
+  test("initSharingControls falls back on share errors without messages", async () => {
+    document.body.innerHTML = `
+      <form data-share-link>
+        <input name="calendarId" value="cal-1" />
+        <input type="checkbox" name="permissions" value="View Calendar" checked />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() => Promise.reject(Object.assign(new Error(), { message: "" })));
+
+    initSharingControls();
+    const form = document.querySelector("[data-share-link]");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(form.querySelector("[data-form-feedback]").textContent).toContain("Share failed");
+
+    global.fetch.mockRestore();
+  });
 });
 
 describe("event creation and management", () => {
@@ -1433,6 +1711,12 @@ describe("event creation and management", () => {
     expect(result).toContain("2024-02-20");
   });
 
+  test("parseEventDateTime falls back when time is empty", () => {
+    const result = parseEventDateTime("2024-02-20", "");
+
+    expect(result).toContain("2024-02-20");
+  });
+
   test("buildEventPayload validates required fields", () => {
     document.body.innerHTML = `
       <form data-event-create>
@@ -1451,6 +1735,24 @@ describe("event creation and management", () => {
     expect(result.errors).toContain("Sign in to create events.");
     expect(result.errors).toContain("Calendar ID is required.");
     expect(result.errors).toContain("Event title is required.");
+    expect(result.errors).toContain("Start and end times are required.");
+  });
+
+  test("buildEventPayload flags missing time entries with dates present", () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="Planning" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="" />
+      </form>
+    `;
+
+    const form = document.querySelector("[data-event-create]");
+    const result = buildEventPayload(form, { user: { id: "user-1" } });
+
     expect(result.errors).toContain("Start and end times are required.");
   });
 
@@ -1495,6 +1797,538 @@ describe("event creation and management", () => {
     expect(result.payload.endsAt).toBeTruthy();
   });
 
+  test("openEventModal and closeEventModal toggle visibility", () => {
+    document.body.innerHTML = `
+      <div class="event-modal" id="event-modal" data-event-modal aria-hidden="true"></div>
+    `;
+
+    const modal = document.getElementById("event-modal");
+    openEventModal(modal);
+    expect(modal.classList.contains("event-modal--open")).toBe(true);
+
+    closeEventModal(modal);
+    expect(modal.classList.contains("event-modal--open")).toBe(false);
+  });
+
+  test("showCalendarToast updates the toast state", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast class="calendar-toast"></div>
+      </div>
+    `;
+
+    const root = document.querySelector("[data-calendar-view]");
+    showCalendarToast(root, "Copied", "success");
+
+    const toast = document.querySelector("[data-calendar-toast]");
+    expect(toast.textContent).toBe("Copied");
+    expect(toast.classList.contains("calendar-toast--visible")).toBe(true);
+  });
+
+  test("showCalendarToast handles missing toasts and reuses timers", () => {
+    jest.useFakeTimers();
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast class="calendar-toast"></div>
+      </div>
+    `;
+    showCalendarToast(document.querySelector("[data-calendar-view]"), "First");
+    showCalendarToast(document.querySelector("[data-calendar-view]"), "Second");
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+
+    document.body.innerHTML = `<div data-calendar-view></div>`;
+    expect(() => showCalendarToast(document.querySelector("[data-calendar-view]"), "Missing")).not.toThrow();
+  });
+
+  test("copyTextToClipboard uses navigator clipboard when available", async () => {
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard: { writeText: jest.fn().mockResolvedValue(undefined) } },
+      configurable: true
+    });
+
+    await expect(copyTextToClipboard("hello")).resolves.toBe(true);
+    expect(global.navigator.clipboard.writeText).toHaveBeenCalledWith("hello");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("copyTextToClipboard uses execCommand fallback when clipboard is unavailable", async () => {
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", { value: undefined, configurable: true });
+    const originalExecCommand = document.execCommand;
+    document.execCommand = jest.fn().mockReturnValue(true);
+
+    await expect(copyTextToClipboard("fallback")).resolves.toBe(true);
+    expect(document.execCommand).toHaveBeenCalledWith("copy");
+
+    document.execCommand = originalExecCommand;
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("openEventModal handles null inputs", () => {
+    expect(() => openEventModal(null)).not.toThrow();
+    expect(() => closeEventModal(null)).not.toThrow();
+  });
+
+  test("initCalendarDayMenus returns disabled without a calendar view", () => {
+    document.body.innerHTML = "";
+
+    const result = initCalendarDayMenus();
+    expect(result.enabled).toBe(false);
+  });
+
+  test("initCalendarDayMenus toggles menus and closes on outside clicks", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+
+    const toggle = document.querySelector("[data-calendar-menu-toggle]");
+    const menu = toggle.closest("[data-calendar-menu]");
+    toggle.click();
+    expect(menu.classList.contains("calendar-day-menu--open")).toBe(true);
+
+    toggle.click();
+    expect(menu.classList.contains("calendar-day-menu--open")).toBe(false);
+
+    document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(menu.classList.contains("calendar-day-menu--open")).toBe(false);
+  });
+
+  test("initCalendarDayMenus validates copy form selection", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+
+    const copyModal = document.getElementById("calendar-copy-modal");
+    const copyForm = copyModal.querySelector("[data-calendar-copy-form]");
+    copyForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    expect(copyModal.querySelector("[data-calendar-copy-feedback]").textContent).toContain("Select an event");
+
+    copyModal.dataset.eventPayload = "bad-json";
+    copyForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    expect(copyModal.querySelector("[data-calendar-copy-feedback]").textContent).toContain("Unable to read event details");
+
+    copyModal.dataset.eventPayload = encodeMenuPayload({
+      id: "evt-1",
+      title: "Kickoff"
+    });
+    copyForm.querySelectorAll('input[name="copyFields"]').forEach((input) => {
+      input.checked = false;
+    });
+    copyForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    expect(copyModal.querySelector("[data-calendar-copy-feedback]").textContent).toContain("Choose at least one field");
+  });
+
+  test("initCalendarDayMenus copies event payload and handles clipboard errors", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard: { writeText: jest.fn().mockRejectedValue(new Error("fail")) } },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+
+    const copyModal = document.getElementById("calendar-copy-modal");
+    copyModal.dataset.eventPayload = encodeMenuPayload({ id: "evt-1", title: "Kickoff" });
+    const copyForm = copyModal.querySelector("[data-calendar-copy-form]");
+    copyForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise(process.nextTick);
+    expect(copyModal.querySelector("[data-calendar-copy-feedback]").textContent).toContain("Unable to copy");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus copies event payload to clipboard", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard: { writeText: jest.fn().mockResolvedValue(undefined) } },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+
+    const copyModal = document.getElementById("calendar-copy-modal");
+    copyModal.dataset.eventPayload = encodeMenuPayload({ id: "evt-1", title: "Kickoff" });
+    const copyForm = copyModal.querySelector("[data-calendar-copy-form]");
+    copyForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise(process.nextTick);
+    expect(global.navigator.clipboard.writeText).toHaveBeenCalled();
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus sets default times when blank", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    const modal = document.getElementById("calendar-event-modal");
+    const startsTime = modal.querySelector('[name="startsTime"]');
+    const endsTime = modal.querySelector('[name="endsTime"]');
+    startsTime.removeAttribute("value");
+    endsTime.removeAttribute("value");
+    startsTime.value = "";
+    endsTime.value = "";
+
+    initCalendarDayMenus();
+
+    document.querySelector('[data-day-action="new"][data-date-key="2024-01-10"]').click();
+    expect(startsTime.value).toBe("09:00");
+    expect(endsTime.value).toBe("10:00");
+  });
+
+  test("initCalendarDayMenus handles paste clipboard edge cases", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard: { readText: jest.fn().mockResolvedValue("") } },
+      configurable: true
+    });
+    initCalendarDayMenus();
+
+    const pasteButton = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
+    pasteButton.click();
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Clipboard is empty");
+
+    global.navigator.clipboard.readText.mockResolvedValue("not-json");
+    pasteButton.click();
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Unable to paste event");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus reports missing calendar ids and pastes events", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalFetch = global.fetch;
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: {
+        clipboard: {
+          readText: jest.fn().mockResolvedValue(JSON.stringify({ title: "Clipboard" }))
+        }
+      },
+      configurable: true
+    });
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+    initCalendarDayMenus();
+
+    const pasteButton = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
+    pasteButton.click();
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Paste payload missing calendar ID");
+
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+    const pasteButtonWithCalendar = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
+    pasteButtonWithCalendar.click();
+    await new Promise(process.nextTick);
+    expect(global.fetch).toHaveBeenCalled();
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Event pasted to calendar");
+
+    global.fetch = originalFetch;
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus reports missing event payloads", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button data-day-action="edit" data-event-payload="bad"></button>
+      </div>
+    `;
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="edit"]').click();
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Unable to load event details");
+  });
+
+  test("initCalendarDayMenus opens new event modal and pre-fills date", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+
+    const newButton = document.querySelector('[data-day-action="new"][data-date-key="2024-01-10"]');
+    newButton.click();
+
+    const modal = document.getElementById("calendar-event-modal");
+    expect(modal.classList.contains("event-modal--open")).toBe(true);
+    expect(modal.querySelector('[name="calendarId"]').value).toBe("cal-1");
+    expect(modal.querySelector('[name="startsDate"]').value).toBe("2024-01-10");
+  });
+
+  test("initCalendarDayMenus opens copy modal with summary", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+
+    const copyButton = document.querySelector('[data-day-action="copy"][data-event-payload]');
+    copyButton.click();
+
+    const copyModal = document.getElementById("calendar-copy-modal");
+    const summary = copyModal.querySelector("[data-calendar-copy-summary]");
+    expect(copyModal.classList.contains("event-modal--open")).toBe(true);
+    expect(summary.textContent).toContain("Kickoff");
+  });
+
+  test("initCalendarDayMenus handles copy actions without feedback blocks", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    document.querySelector("[data-calendar-copy-feedback]").remove();
+
+    initCalendarDayMenus();
+
+    const copyButton = document.querySelector('[data-day-action="copy"][data-event-payload]');
+    copyButton.click();
+
+    const summary = document.querySelector("[data-calendar-copy-summary]");
+    expect(summary.textContent).toContain("Untitled");
+  });
+
+  test("initCalendarDayMenus warns when pasting without auth", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+
+    const pasteButton = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
+    pasteButton.click();
+
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Sign in to paste events");
+  });
+
+  test("initCalendarDayMenus handles paste when navigator is missing", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", { value: undefined, configurable: true });
+
+    initCalendarDayMenus();
+
+    const pasteButton = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
+    pasteButton.click();
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Clipboard is empty");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus handles missing modals for actions", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button data-day-action="new" data-date-key="2024-01-10"></button>
+        <button data-day-action="copy" data-event-payload="${encodeMenuPayload({ id: "evt-1" })}"></button>
+      </div>
+    `;
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="new"]').click();
+    document.querySelector('[data-day-action="copy"]').click();
+
+    expect(document.querySelector("[data-calendar-toast]").textContent).toBe("");
+  });
+
+  test("initCalendarDayMenus handles new actions without date keys", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button data-day-action="new" data-calendar-id="cal-1"></button>
+      </div>
+      <div class="event-modal" id="calendar-event-modal" data-event-modal aria-hidden="true">
+        <form data-calendar-event-form>
+          <input name="calendarId" value="" />
+          <input name="startsDate" value="" />
+          <input name="endsDate" value="" />
+          <input name="startsTime" value="" />
+          <input name="endsTime" value="" />
+        </form>
+      </div>
+    `;
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="new"]').click();
+
+    const modal = document.getElementById("calendar-event-modal");
+    expect(modal.classList.contains("event-modal--open")).toBe(true);
+  });
+
+  test("initCalendarDayMenus handles missing feedback and menu context", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <div data-calendar-menu></div>
+        <button data-calendar-menu-toggle></button>
+        <button data-day-action="copy" data-event-payload="${encodeMenuPayload({ id: "evt-1" })}"></button>
+      </div>
+      <div id="calendar-copy-modal">
+        <form data-calendar-copy-form></form>
+      </div>
+    `;
+
+    initCalendarDayMenus();
+    document.querySelector("[data-calendar-menu-toggle]").click();
+    document.querySelector("[data-calendar-view]").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    document.querySelector('[data-day-action="copy"]').click();
+    document.querySelector("[data-calendar-copy-form]").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true })
+    );
+
+    expect(document.querySelector("[data-calendar-toast]").textContent).toBe("");
+  });
+
+  test("initCalendarDayMenus opens edit modal with event details", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", description: "Details", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+
+    const editButton = document.querySelector('[data-day-action="edit"][data-event-payload]');
+    editButton.click();
+
+    const editModal = document.getElementById("calendar-event-detail-modal");
+    const details = editModal.querySelector("[data-calendar-edit-details]");
+    expect(editModal.classList.contains("event-modal--open")).toBe(true);
+    expect(details.textContent).toContain("Kickoff");
+  });
+
+  test("initCalendarDayMenus renders edit fallbacks for missing fields", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button
+          data-day-action="edit"
+          data-event-payload="${encodeMenuPayload({ id: "evt-1", title: "", description: "", startsAt: null })}"
+        >
+          Edit
+        </button>
+      </div>
+      <div class="event-modal" id="calendar-event-detail-modal" data-event-modal aria-hidden="true">
+        <div data-calendar-edit-details></div>
+      </div>
+    `;
+
+    initCalendarDayMenus();
+
+    const editButton = document.querySelector('[data-day-action="edit"][data-event-payload]');
+    editButton.click();
+
+    const details = document.querySelector("[data-calendar-edit-details]");
+    expect(details.textContent).toContain("Untitled");
+    expect(details.textContent).toContain("Unscheduled");
+    expect(details.textContent).toContain("No description added yet.");
+  });
+
+  test("initCalendarDayMenus skips edit when modal is missing", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button data-day-action="edit" data-event-payload="${encodeMenuPayload({ id: "evt-1", title: "Kickoff" })}"></button>
+      </div>
+    `;
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="edit"]').click();
+
+    expect(document.querySelector("[data-calendar-toast]").textContent).toBe("");
+  });
+
   test("renderEventManagementList handles empty and populated events", () => {
     const emptyHtml = renderEventManagementList([]);
     const filledHtml = renderEventManagementList([
@@ -1504,6 +2338,12 @@ describe("event creation and management", () => {
     expect(emptyHtml).toContain("No events found yet");
     expect(filledHtml).toContain("Sync");
     expect(filledHtml).toContain("Remove");
+  });
+
+  test("renderEventManagementList uses defaults when called without args", () => {
+    const html = renderEventManagementList();
+
+    expect(html).toContain("No events found yet");
   });
 
   test("initEventModal opens and closes event modal", () => {
@@ -1726,6 +2566,73 @@ describe("event creation and management", () => {
     global.fetch.mockRestore();
   });
 
+  test("initEventCreation falls back when error messages are empty", async () => {
+    document.body.innerHTML = `
+      <form data-event-create>
+        <input name="title" value="Sync" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="10:00" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="11:00" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() => Promise.reject(Object.assign(new Error(), { message: "" })));
+
+    initEventCreation();
+    document.querySelector("[data-event-create]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-form-feedback]").textContent).toContain("Unable to create event");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initEventCreation skips modal close when modal is missing", async () => {
+    document.body.innerHTML = `
+      <form data-event-create data-event-modal-close-on-success>
+        <input name="title" value="Sync" />
+        <input name="calendarId" value="cal-1" />
+        <input name="startsDate" value="2024-02-20" />
+        <input name="startsTime" value="10:00" />
+        <input name="endsDate" value="2024-02-20" />
+        <input name="endsTime" value="11:00" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: "evt-1", title: "Sync" })
+      })
+    );
+
+    initEventCreation();
+    document.querySelector("[data-event-create]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-form-feedback]").textContent).toContain("Event created successfully");
+
+    global.fetch.mockRestore();
+  });
+
   test("refreshEventList handles missing calendar identifiers", async () => {
     document.body.innerHTML = `<div id="event-list"></div>`;
     const container = document.getElementById("event-list");
@@ -1746,6 +2653,24 @@ describe("event creation and management", () => {
     await refreshEventList(container, "cal-1", "token");
 
     expect(container.innerHTML).toContain("Unable to load events");
+
+    global.fetch.mockRestore();
+  });
+
+  test("refreshEventList handles missing event arrays", async () => {
+    document.body.innerHTML = `<div id="event-list"></div>`;
+    const container = document.getElementById("event-list");
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({})
+      })
+    );
+
+    await refreshEventList(container, "cal-1", "token");
+
+    expect(container.innerHTML).toContain("Event Management");
 
     global.fetch.mockRestore();
   });
@@ -1847,6 +2772,37 @@ describe("event creation and management", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID is required");
+  });
+
+  test("initEventManagement handles filters without list targets", async () => {
+    document.body.innerHTML = `
+      <form data-event-filter>
+        <input name="calendarId" value="cal-1" />
+        <div class="form-feedback is-hidden" data-form-feedback></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ events: [] })
+      })
+    );
+
+    initEventManagement();
+    document.querySelector("[data-event-filter]")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    global.fetch.mockRestore();
   });
 
   test("initEventManagement ignores non-form submit events", () => {
@@ -2054,6 +3010,28 @@ describe("client data loading", () => {
     global.fetch = originalFetch;
   });
 
+  test("loadCalendarOverview defaults when events payload is missing", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) => {
+      if (url.startsWith("/api/calendars")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary" }] })
+        });
+      }
+      if (url.startsWith("/api/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    const result = await loadCalendarOverview({ token: "token" });
+
+    expect(result.events).toEqual([]);
+
+    global.fetch = originalFetch;
+  });
+
   test("loadCalendarOverview handles missing calendars and events", async () => {
     const originalFetch = global.fetch;
     global.fetch = jest.fn((url) => {
@@ -2143,6 +3121,34 @@ describe("client data loading", () => {
     global.fetch.mockRestore();
   });
 
+  test("resolveAuthState defaults permissions when missing from session", async () => {
+    const storage = {
+      data: {},
+      getItem(key) {
+        return this.data[key] || null;
+      },
+      setItem(key, value) {
+        this.data[key] = value;
+      }
+    };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          user: { id: "user-7", name: "Session User" },
+          session: { token: "session-token" }
+        })
+      })
+    );
+
+    const result = await resolveAuthState(storage);
+
+    expect(result.permissions).toEqual([]);
+
+    global.fetch.mockRestore();
+  });
+
   test("resolveAuthState returns stored state when session payload is incomplete", async () => {
     const storage = {
       data: {},
@@ -2178,6 +3184,17 @@ describe("client data loading", () => {
     );
 
     await expect(postJson("/api/auth/login", { email: "bad" })).rejects.toThrow("Invalid request");
+  });
+
+  test("postJson falls back to generic error messages when API message is missing", async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({})
+      })
+    );
+
+    await expect(postJson("/api/auth/login", { email: "bad" })).rejects.toThrow("Request failed");
   });
 
   test("postJson sends auth header when token is provided", async () => {
@@ -2597,6 +3614,15 @@ describe("auth utilities", () => {
     expect(readAuthState(storage)).toBeNull();
   });
 
+  test("clearAuthState handles missing window storage", () => {
+    const originalWindow = global.window;
+    Object.defineProperty(global, "window", { value: undefined, configurable: true });
+
+    expect(clearAuthState()).toBeNull();
+
+    Object.defineProperty(global, "window", { value: originalWindow, configurable: true });
+  });
+
   test("redirectToCalendar uses assign when available", () => {
     const assign = jest.fn();
     const result = redirectToCalendar({ assign });
@@ -2793,6 +3819,77 @@ describe("auth utilities", () => {
     expect(document.querySelector("[data-auth-feedback]").textContent).toContain("user@example.com");
   });
 
+  test("initAuthUI falls back to Account when user details are missing", async () => {
+    document.body.innerHTML = `
+      <div class="nav-actions">
+        <span data-auth-status></span>
+        <button data-auth-trigger="login">Log in</button>
+      </div>
+      <div id="auth-modal" aria-hidden="true">
+        <div data-auth-close></div>
+        <button data-auth-close></button>
+        <button data-auth-tab="login"></button>
+        <form data-auth-panel="login">
+          <input name="email" value="user@example.com" />
+          <input name="password" value="Password123!" />
+          <button type="submit">Log in</button>
+        </form>
+        <div data-auth-feedback></div>
+      </div>
+    `;
+
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ token: "token", user: {} })
+      })
+    );
+
+    initAuthUI();
+    document.querySelector('form[data-auth-panel="login"]').dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-auth-feedback]").textContent).toContain("Account");
+    global.fetch = originalFetch;
+  });
+
+  test("initAuthUI falls back to generic error message when none provided", async () => {
+    document.body.innerHTML = `
+      <div class="nav-actions">
+        <span data-auth-status></span>
+        <button data-auth-trigger="login">Log in</button>
+      </div>
+      <div id="auth-modal" aria-hidden="true">
+        <div data-auth-close></div>
+        <button data-auth-close></button>
+        <button data-auth-tab="login"></button>
+        <form data-auth-panel="login">
+          <input name="email" value="user@example.com" />
+          <input name="password" value="Password123!" />
+          <button type="submit">Log in</button>
+        </form>
+        <div data-auth-feedback></div>
+      </div>
+    `;
+
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn(() => Promise.reject(new Error()));
+    initAuthUI();
+
+    document.querySelector('form[data-auth-panel="login"]').dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-auth-feedback]").textContent).toContain("Authentication failed");
+    global.fetch = originalFetch;
+  });
+
   test("updateAuthStatus disables triggers when signed in", () => {
     document.body.innerHTML = `
       <button data-auth-trigger="login">Log in</button>
@@ -2832,6 +3929,32 @@ describe("auth utilities", () => {
     expect(form.querySelector('[name="email"]').value).toBe("pat@example.com");
     expect(form.querySelector('[name="organizationId"]').value).toBe("org-12");
     expect(form.querySelector('[name="role"]').value).toBe("owner");
+  });
+
+  test("updateAccountSections clears missing profile values", () => {
+    document.body.innerHTML = `
+      <div id="profile-card"></div>
+      <div id="home-highlights"></div>
+      <div id="profile-management">
+        <form data-profile-form>
+          <input name="name" value="Old" />
+          <input name="email" value="old@example.com" />
+          <input name="organizationId" value="org-old" />
+          <input name="role" value="admin" />
+        </form>
+      </div>
+    `;
+
+    updateAccountSections({
+      name: "",
+      email: "",
+      organizationId: "",
+      role: ""
+    });
+
+    const form = document.querySelector("[data-profile-form]");
+    expect(form.querySelector('[name="name"]').value).toBe("");
+    expect(form.querySelector('[name="email"]').value).toBe("");
   });
 
   test("updateAccountSections ignores missing profile fields", () => {
@@ -3008,6 +4131,27 @@ describe("auth utilities", () => {
 
     expect(document.querySelector("[data-auth-feedback]").textContent).toContain("Logout failed");
     expect(readAuthState(storage)).toBeNull();
+  });
+
+  test("updateAuthStatus falls back to default logout error messaging", async () => {
+    document.body.innerHTML = `
+      <span data-auth-status></span>
+      <div data-auth-feedback></div>
+    `;
+
+    const storage = createStorage();
+    writeAuthState({ token: "token", user: { email: "user@example.com" } }, storage);
+
+    const emptyError = new Error();
+    emptyError.message = "";
+    global.fetch = jest.fn(() => Promise.reject(emptyError));
+
+    updateAuthStatus(readAuthState(storage), storage);
+    document.querySelector("[data-auth-logout]").click();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector("[data-auth-feedback]").textContent).toContain("Logout failed");
   });
 
   test("updateAuthStatus ignores missing feedback element", async () => {

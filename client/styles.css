@@ -272,6 +272,7 @@ a {
 .calendar-view {
   display: grid;
   gap: 1.5rem;
+  position: relative;
 }
 
 .calendar-fullscreen {
@@ -447,6 +448,131 @@ a {
   gap: 0.45rem;
   border: 1px solid rgba(123, 108, 246, 0.12);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.calendar-month__cell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.calendar-day-menu {
+  position: relative;
+}
+
+.calendar-day-menu__toggle {
+  border: 1px solid var(--border);
+  background: #f5f2ff;
+  color: #5542a6;
+  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.calendar-day-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 30px rgba(63, 47, 122, 0.18);
+  padding: 0.75rem;
+  display: none;
+  min-width: 200px;
+  z-index: 3;
+}
+
+.calendar-day-menu--open .calendar-day-menu__panel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.calendar-day-menu__item {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3f2f7a;
+  cursor: pointer;
+}
+
+.calendar-day-menu__item:hover {
+  color: #5f4acb;
+}
+
+.calendar-day-menu__group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.calendar-day-menu__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.calendar-day-menu__list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.calendar-day-menu__item--nested {
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.calendar-day-menu__empty {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.calendar-toast {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  background: #f3efff;
+  color: #4c3ca8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.calendar-toast--visible {
+  opacity: 1;
+}
+
+.calendar-edit-details {
+  background: #f8f5ff;
+  border-radius: 16px;
+  padding: 1rem;
+  border: 1px solid var(--border);
+}
+
+.calendar-edit-details__card {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #3f2f7a;
+}
+
+.calendar-copy-fields {
+  display: grid;
+  gap: 0.5rem;
 }
 
 .calendar-month__cell--outside {
@@ -857,6 +983,10 @@ a {
   z-index: 1;
 }
 
+.event-modal--compact .event-modal__card {
+  max-width: 520px;
+}
+
 .event-modal__header {
   display: grid;
   gap: 0.5rem;
@@ -1057,6 +1187,12 @@ a {
 .form {
   display: grid;
   gap: 1rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.8rem;
 }
 
 .form-field {
