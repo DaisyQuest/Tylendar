@@ -54,11 +54,12 @@ This document defines the **Master Integration Test (MIT)** that validates all m
 7. **Calendar Views**
    - Month/2-week/week/day rendering with event correctness.
    - Verify navigation between views preserves selected date and filters.
+   - Confirm calendar view toggles switch between month, 2-week, week, and day layouts without losing context.
    - Fetch calendars with session-cookie authentication and confirm the primary calendar renders with newly created events.
    - Confirm session-cookie authentication hydrates the calendar view even when local auth storage is empty.
    - Confirm the calendar grid renders time slots, all-day row, and focus-day counts with an agenda sidebar.
    - Confirm the calendar experience renders the month grid, agenda highlights, and week-focus schedule blocks with live events.
-   - Use the day-cell action menu to create a new event, review event details, copy event settings to JSON, and paste a clipboard JSON payload into the selected day.
+   - Use the day-cell action menu to create a new event, review event details, copy event settings to JSON, and paste a clipboard JSON payload into the selected day (including manual paste fallback when clipboard access fails).
    - Validate the personalized calendar header shows owner, availability, search/filter tools, and quick actions.
    - Confirm focus area panels and sync/time zone context render in the calendar spotlight section.
 8. **Event List Views**
@@ -66,6 +67,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Confirm list view filtering respects calendar permissions.
 9. **Manage Access Flow**
    - Assign granular permissions; verify immediate enforcement.
+   - Confirm permission assignment forms load all calendars with the default calendar preselected.
    - Confirm Manage Access UI table lists assigned permissions accurately.
    - Validate the Access Command Center shows summary metrics, default policies, and pending access requests.
    - Confirm permission playbook content and governance checklist are visible for owners.

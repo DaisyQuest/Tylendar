@@ -32,6 +32,7 @@ const {
   setFormFeedback,
   buildEventPayload,
   buildPasteEventPayload,
+  buildCalendarSelectorMarkup,
   addHourToTime,
   copyTextToClipboard,
   createEventId,
@@ -50,6 +51,7 @@ const {
   getSelectedPermissions,
   getAccountHighlights,
   initCalendarControls,
+  initCalendarViewSwitcher,
   initCalendarDayMenus,
   initEventCreation,
   initEventManagement,
@@ -57,6 +59,7 @@ const {
   initSharingControls,
   initProfileManagement,
   loadCalendarOverview,
+  hydrateCalendarSelectors,
   redirectToCalendar,
   updateAccountSections
 } = require("../client/app");
@@ -276,6 +279,7 @@ describe("client rendering", () => {
     expect(html).toContain("calendar-day-menu");
     expect(html).toContain("Paste from clipboard");
     expect(html).toContain("calendar-copy-modal");
+    expect(html).toContain("calendar-paste-modal");
   });
 
   test("renderCalendarView uses defaults when calendar is missing", () => {
@@ -330,7 +334,7 @@ describe("client rendering", () => {
       label: "Calendar",
       summary: "Summary",
       referenceDate: "2024-01-05T12:00:00.000Z",
-      events: [{ title: "Standup", startsAt: "2024-01-05T09:00:00.000Z" }]
+      events: [{ title: "Standup", startsAt: "2024-01-05T10:00:00.000Z" }]
     });
 
     expect(html).toContain("calendar-grid");
@@ -364,7 +368,7 @@ describe("client rendering", () => {
       label: "Calendar",
       summary: "Summary",
       referenceDate: "2024-01-05T12:00:00.000Z",
-      events: [{ startsAt: "2024-01-05T09:00:00.000Z" }]
+      events: [{ startsAt: "2024-01-05T10:00:00.000Z" }]
     });
 
     expect(html).toContain("calendar-event__title");
@@ -1212,6 +1216,125 @@ describe("calendar and sharing controls", () => {
     expect(getSelectedPermissions()).toEqual([]);
   });
 
+  test("buildCalendarSelectorMarkup marks default calendar as selected", () => {
+    const { optionsMarkup, listMarkup, selectedId } = buildCalendarSelectorMarkup(
+      [
+        { id: "cal-1", name: "Primary Calendar" },
+        { id: "cal-2", name: "Team Calendar" }
+      ],
+      ""
+    );
+
+    expect(optionsMarkup).toContain("Primary Calendar (Default)");
+    expect(listMarkup).toContain("calendar-option--active");
+    expect(selectedId).toBe("cal-1");
+  });
+
+  test("buildCalendarSelectorMarkup handles empty calendars", () => {
+    const { optionsMarkup, listMarkup, selectedId } = buildCalendarSelectorMarkup([], "");
+
+    expect(optionsMarkup).toContain("No calendars available");
+    expect(listMarkup).toContain("No calendars available");
+    expect(selectedId).toBe("");
+  });
+
+  test("hydrateCalendarSelectors populates calendar lists", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <select name="calendarId" data-calendar-select></select>
+        <div data-calendar-selector></div>
+      </form>
+    `;
+
+    window.localStorage.setItem(
+      "tylendar-auth",
+      JSON.stringify({ token: "token-1", user: { id: "user-1" } })
+    );
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            calendars: [
+              { id: "cal-1", name: "Primary Calendar" },
+              { id: "cal-2", name: "Team Calendar" }
+            ]
+          })
+      })
+    );
+
+    await hydrateCalendarSelectors({ authState: readAuthState() });
+    const select = document.querySelector("[data-calendar-select]");
+    const selector = document.querySelector("[data-calendar-selector]");
+    expect(select.value).toBe("cal-1");
+    expect(selector.textContent).toContain("Primary Calendar");
+
+    global.fetch.mockRestore();
+  });
+
+  test("hydrateCalendarSelectors shows sign-in prompt when unauthenticated", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <select name="calendarId" data-calendar-select></select>
+        <div data-calendar-selector></div>
+      </form>
+    `;
+
+    await hydrateCalendarSelectors({ authState: null });
+
+    expect(document.querySelector("[data-calendar-selector]").textContent).toContain("Sign in to load calendars");
+  });
+
+  test("hydrateCalendarSelectors handles failed calendar loading", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <select name="calendarId" data-calendar-select></select>
+        <div data-calendar-selector></div>
+      </form>
+    `;
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({})
+      })
+    );
+
+    await hydrateCalendarSelectors({ authState: { token: "token-1" } });
+    expect(document.querySelector("[data-calendar-selector]").textContent).toContain("Unable to load calendars");
+
+    global.fetch.mockRestore();
+  });
+
+  test("hydrateCalendarSelectors ignores calendar options without ids", async () => {
+    document.body.innerHTML = `
+      <form data-permission-create>
+        <select name="calendarId" data-calendar-select></select>
+        <div data-calendar-selector></div>
+      </form>
+    `;
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            calendars: [{ id: "cal-1", name: "Primary Calendar" }]
+          })
+      })
+    );
+
+    await hydrateCalendarSelectors({ authState: { token: "token-1" } });
+    const select = document.querySelector("[data-calendar-select]");
+    const optionButton = document.querySelector("[data-calendar-option]");
+    optionButton.removeAttribute("data-calendar-id");
+    optionButton.click();
+    expect(select.value).toBe("cal-1");
+
+    global.fetch.mockRestore();
+  });
+
   test("initCalendarControls warns when not signed in", async () => {
     document.body.innerHTML = `
       <form data-calendar-create>
@@ -1386,6 +1509,12 @@ describe("calendar and sharing controls", () => {
       "tylendar-auth",
       JSON.stringify({ token: "token", user: { id: "user-1" } })
     );
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary Calendar" }] })
+      })
+    );
 
     initCalendarControls();
     const form = document.querySelector("[data-permission-create]");
@@ -1394,6 +1523,8 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Calendar ID and User ID");
+
+    global.fetch.mockRestore();
   });
 
   test("initCalendarControls requires authentication for permissions", async () => {
@@ -1429,6 +1560,12 @@ describe("calendar and sharing controls", () => {
       "tylendar-auth",
       JSON.stringify({ token: "token", user: { id: "user-1" } })
     );
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary Calendar" }] })
+      })
+    );
 
     initCalendarControls();
     const form = document.querySelector("[data-permission-create]");
@@ -1437,6 +1574,8 @@ describe("calendar and sharing controls", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(form.querySelector("[data-form-feedback]").textContent).toContain("Select at least one permission");
+
+    global.fetch.mockRestore();
   });
 
   test("initCalendarControls falls back on permission assignment errors", async () => {
@@ -1454,7 +1593,12 @@ describe("calendar and sharing controls", () => {
       JSON.stringify({ token: "token", user: { id: "user-1" } })
     );
 
-    global.fetch = jest.fn(() => Promise.reject(Object.assign(new Error(), { message: "" })));
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary Calendar" }] })
+      })
+      .mockRejectedValueOnce(Object.assign(new Error(), { message: "" }));
 
     initCalendarControls();
     const form = document.querySelector("[data-permission-create]");
@@ -1482,12 +1626,15 @@ describe("calendar and sharing controls", () => {
       JSON.stringify({ token: "token", user: { id: "user-1" } })
     );
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary Calendar" }] })
+      })
+      .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ status: "ok" })
-      })
-    );
+      });
 
     initCalendarControls();
     const form = document.querySelector("[data-permission-create]");
@@ -1515,12 +1662,15 @@ describe("calendar and sharing controls", () => {
       JSON.stringify({ token: "token", user: { id: "user-1" } })
     );
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ calendars: [{ id: "cal-1", name: "Primary Calendar" }] })
+      })
+      .mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ error: "Permission failed" })
-      })
-    );
+      });
 
     initCalendarControls();
     const form = document.querySelector("[data-permission-create]");
@@ -1867,6 +2017,35 @@ describe("event creation and management", () => {
     Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
   });
 
+  test("initCalendarViewSwitcher toggles calendar panels", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: []
+    });
+
+    const result = initCalendarViewSwitcher();
+    expect(result.enabled).toBe(true);
+    const weekToggle = document.querySelector('[data-calendar-view-toggle="week"]');
+    weekToggle.click();
+    expect(weekToggle.classList.contains("calendar-pill--active")).toBe(true);
+    expect(
+      document.querySelector('[data-calendar-view-panel="week"]').classList.contains("calendar-view__panel--active")
+    ).toBe(true);
+  });
+
+  test("initCalendarViewSwitcher returns disabled when panels are missing", () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <button data-calendar-view-toggle="month"></button>
+      </div>
+    `;
+
+    expect(initCalendarViewSwitcher().enabled).toBe(false);
+  });
+
   test("openEventModal handles null inputs", () => {
     expect(() => openEventModal(null)).not.toThrow();
     expect(() => closeEventModal(null)).not.toThrow();
@@ -1894,9 +2073,6 @@ describe("event creation and management", () => {
     const menu = toggle.closest("[data-calendar-menu]");
     toggle.click();
     expect(menu.classList.contains("calendar-day-menu--open")).toBe(true);
-
-    toggle.click();
-    expect(menu.classList.contains("calendar-day-menu--open")).toBe(false);
 
     document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(menu.classList.contains("calendar-day-menu--open")).toBe(false);
@@ -2033,10 +2209,217 @@ describe("event creation and management", () => {
     const pasteButton = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
     pasteButton.click();
     await new Promise(process.nextTick);
-    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Clipboard is empty");
+    expect(document.getElementById("calendar-paste-modal").classList.contains("event-modal--open")).toBe(true);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Clipboard is empty");
 
     global.navigator.clipboard.readText.mockResolvedValue("not-json");
     pasteButton.click();
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("valid JSON");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus opens paste modal when clipboard read fails", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: {
+        clipboard: {
+          readText: jest.fn().mockRejectedValue(new Error("denied"))
+        }
+      },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]').click();
+    await new Promise(process.nextTick);
+
+    expect(document.getElementById("calendar-paste-modal").classList.contains("event-modal--open")).toBe(true);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Clipboard is empty");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus surfaces clipboard access errors in modal", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    const clipboard = {};
+    Object.defineProperty(clipboard, "readText", {
+      get() {
+        throw new Error("blocked");
+      }
+    });
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]').click();
+    await new Promise(process.nextTick);
+    expect(document.getElementById("calendar-paste-modal").classList.contains("event-modal--open")).toBe(true);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Unable to read clipboard");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus handles paste submissions without payloads", () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+    const pasteModal = document.getElementById("calendar-paste-modal");
+    openEventModal(pasteModal);
+    pasteModal.querySelector("[data-calendar-paste-form]").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true })
+    );
+
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Paste event JSON");
+  });
+
+  test("initCalendarDayMenus tolerates missing paste feedback blocks", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    document.querySelector("[data-calendar-paste-feedback]").remove();
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard: { readText: jest.fn().mockResolvedValue("") } },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]').click();
+    await new Promise(process.nextTick);
+    expect(document.getElementById("calendar-paste-modal").classList.contains("event-modal--open")).toBe(true);
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus requires auth for paste submissions", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    initCalendarDayMenus();
+    const pasteModal = document.getElementById("calendar-paste-modal");
+    pasteModal.dataset.calendarId = "cal-1";
+    pasteModal.dataset.dateKey = "2024-01-10";
+    pasteModal.querySelector('[name="pastePayload"]').value = JSON.stringify({ title: "Clipboard" });
+    pasteModal.querySelector("[data-calendar-paste-form]").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true })
+    );
+
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Sign in to paste events");
+  });
+
+  test("initCalendarDayMenus surfaces paste submission failures", async () => {
+    document.body.innerHTML = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      calendarId: "cal-1",
+      events: [{ id: "evt-1", title: "Kickoff", startsAt: "2024-01-10T10:00:00.000Z" }]
+    });
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    global.fetch = jest.fn(() => Promise.reject(new Error("fail")));
+
+    initCalendarDayMenus();
+    const pasteModal = document.getElementById("calendar-paste-modal");
+    pasteModal.dataset.calendarId = "cal-1";
+    pasteModal.dataset.dateKey = "2024-01-10";
+    pasteModal.querySelector('[name="pastePayload"]').value = JSON.stringify({ title: "Clipboard" });
+    pasteModal.querySelector("[data-calendar-paste-form]").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true })
+    );
+
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Unable to paste event");
+
+    global.fetch.mockRestore();
+  });
+
+  test("initCalendarDayMenus falls back to toast when paste modal is missing", async () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button data-day-action="paste" data-date-key="2024-01-10"></button>
+      </div>
+    `;
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard: { readText: jest.fn().mockResolvedValue("") } },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="paste"]').click();
+    await new Promise(process.nextTick);
+    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Clipboard is empty");
+
+    Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
+  });
+
+  test("initCalendarDayMenus reports paste errors without a modal", async () => {
+    document.body.innerHTML = `
+      <div data-calendar-view>
+        <div data-calendar-toast></div>
+        <button data-day-action="paste" data-date-key="2024-01-10"></button>
+      </div>
+    `;
+
+    writeAuthState({ token: "token-1", user: { id: "user-1" } });
+    const originalNavigator = global.navigator;
+    const clipboard = {};
+    Object.defineProperty(clipboard, "readText", {
+      get() {
+        throw new Error("no clipboard");
+      }
+    });
+    Object.defineProperty(global, "navigator", {
+      value: { clipboard },
+      configurable: true
+    });
+
+    initCalendarDayMenus();
+    document.querySelector('[data-day-action="paste"]').click();
     await new Promise(process.nextTick);
     expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Unable to paste event");
 
@@ -2071,6 +2454,7 @@ describe("event creation and management", () => {
     pasteButton.click();
     await new Promise(process.nextTick);
     expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Paste payload missing calendar ID");
+    expect(document.getElementById("calendar-paste-modal").classList.contains("event-modal--open")).toBe(true);
 
     document.body.innerHTML = renderCalendarView({
       label: "Calendar",
@@ -2199,7 +2583,8 @@ describe("event creation and management", () => {
     const pasteButton = document.querySelector('[data-day-action="paste"][data-date-key="2024-01-10"]');
     pasteButton.click();
     await new Promise(process.nextTick);
-    expect(document.querySelector("[data-calendar-toast]").textContent).toContain("Clipboard is empty");
+    expect(document.getElementById("calendar-paste-modal").classList.contains("event-modal--open")).toBe(true);
+    expect(document.querySelector("[data-calendar-paste-feedback]").textContent).toContain("Clipboard is empty");
 
     Object.defineProperty(global, "navigator", { value: originalNavigator, configurable: true });
   });

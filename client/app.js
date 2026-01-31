@@ -122,7 +122,11 @@ async function copyTextToClipboard(text) {
 
 async function readClipboardText() {
   if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
-    return navigator.clipboard.readText();
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      return "";
+    }
   }
   return "";
 }
@@ -446,28 +450,34 @@ function renderCalendarView(payload) {
     })
     .join("");
 
-  const focusDays = Array.from({ length: 5 }, (_, index) => {
-    const date = new Date(referenceDate);
-    date.setDate(referenceDate.getDate() + index);
+  const startOfWeek = new Date(referenceDate);
+  startOfWeek.setHours(0, 0, 0, 0);
+  startOfWeek.setDate(referenceDate.getDate() - referenceDate.getDay());
+  const buildRangeDays = (count) => Array.from({ length: count }, (_, index) => {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + index);
     return {
       key: formatDateKey(date),
       label: date.toLocaleString("en-US", { weekday: "short" }),
       date
     };
   });
+  const weekDays = buildRangeDays(7);
+  const twoWeekDays = buildRangeDays(14);
   const timeSlots = [
-    { label: "09:00", hour: 9 },
-    { label: "11:00", hour: 11 },
-    { label: "13:00", hour: 13 },
-    { label: "15:00", hour: 15 }
+    { label: "08:00", hour: 8 },
+    { label: "10:00", hour: 10 },
+    { label: "12:00", hour: 12 },
+    { label: "14:00", hour: 14 },
+    { label: "16:00", hour: 16 }
   ];
   const gridHeader = `
     <div class="calendar-grid__corner">Week focus</div>
-    ${focusDays.map((day) => `<div class="calendar-grid__day">${day.label} ${day.date.getDate()}</div>`).join("")}
+    ${weekDays.map((day) => `<div class="calendar-grid__day">${day.label} ${day.date.getDate()}</div>`).join("")}
   `;
   const gridRows = timeSlots
     .map((slot) => {
-      const slotsMarkup = focusDays
+      const slotsMarkup = weekDays
         .map((day) => {
           const dayEvents = eventMap[day.key] || [];
           const slotEvents = dayEvents.filter((event) => {
@@ -503,6 +513,37 @@ function renderCalendarView(payload) {
       `;
     })
     .join("");
+
+  const twoWeekMarkup = twoWeekDays
+    .map((day) => {
+      const dayEvents = eventMap[day.key] || [];
+      const dayEventMarkup = dayEvents.length
+        ? dayEvents.slice(0, 3).map((event) => `<span>${event.title || "Untitled"}</span>`).join("")
+        : `<span class="muted">No events</span>`;
+      return `
+        <div class="calendar-range__day">
+          <div class="calendar-range__header">
+            <span>${day.label}</span>
+            <span>${day.date.getDate()}</span>
+          </div>
+          <div class="calendar-range__events">
+            ${dayEventMarkup}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  const dayKey = formatDateKey(referenceDate);
+  const dayEvents = eventMap[dayKey] || [];
+  const dayPlanMarkup = dayEvents.length
+    ? dayEvents.map((event) => `
+        <div class="calendar-day-plan__slot">
+          <span>${formatTimeLabel(event.startsAt)}</span>
+          <span>${event.title || "Untitled"}</span>
+        </div>
+      `).join("")
+    : `<p class="muted">No events planned for this day.</p>`;
 
   const nextEvent = validEvents[0];
   const agendaMarkup = agendaItems.length
@@ -541,9 +582,10 @@ function renderCalendarView(payload) {
           <div>
             <span class="calendar-control__label">Views</span>
             <div class="calendar-control__pills">
-              <span class="calendar-pill calendar-pill--active">Month</span>
-              <span class="calendar-pill">Week</span>
-              <span class="calendar-pill">Day</span>
+              <button class="calendar-pill calendar-pill--active" type="button" data-calendar-view-toggle="month">Month</button>
+              <button class="calendar-pill" type="button" data-calendar-view-toggle="two-week">2-week</button>
+              <button class="calendar-pill" type="button" data-calendar-view-toggle="week">Week</button>
+              <button class="calendar-pill" type="button" data-calendar-view-toggle="day">Day</button>
             </div>
           </div>
           <div>
@@ -590,20 +632,36 @@ function renderCalendarView(payload) {
         </div>
       </div>
 
-      <div class="calendar-view__body">
-        <div class="calendar-month">
-          <div class="calendar-month__weekdays">${weekdayMarkup}</div>
-          <div class="calendar-month__grid">${monthGrid}</div>
-        </div>
-        <div class="calendar-agenda">
-          <h4>Agenda highlights</h4>
-          ${agendaMarkup}
-        </div>
-      </div>
-
-      <div class="calendar-grid">
-        ${gridHeader}
-        ${gridRows}
+      <div class="calendar-view__panels">
+        <section class="calendar-view__panel calendar-view__panel--active" data-calendar-view-panel="month">
+          <div class="calendar-view__body">
+            <div class="calendar-month">
+              <div class="calendar-month__weekdays">${weekdayMarkup}</div>
+              <div class="calendar-month__grid">${monthGrid}</div>
+            </div>
+            <div class="calendar-agenda">
+              <h4>Agenda highlights</h4>
+              ${agendaMarkup}
+            </div>
+          </div>
+        </section>
+        <section class="calendar-view__panel" data-calendar-view-panel="two-week">
+          <div class="calendar-range">
+            ${twoWeekMarkup}
+          </div>
+        </section>
+        <section class="calendar-view__panel" data-calendar-view-panel="week">
+          <div class="calendar-grid">
+            ${gridHeader}
+            ${gridRows}
+          </div>
+        </section>
+        <section class="calendar-view__panel" data-calendar-view-panel="day">
+          <div class="calendar-day-plan">
+            <h4>${referenceDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</h4>
+            ${dayPlanMarkup}
+          </div>
+        </section>
       </div>
 
       <div class="event-modal event-modal--compact" id="calendar-event-modal" data-event-modal aria-hidden="true">
@@ -690,6 +748,29 @@ function renderCalendarView(payload) {
             <div class="form-feedback is-hidden" data-calendar-copy-feedback></div>
             <div class="event-modal__actions">
               <button class="primary" type="submit">Copy JSON</button>
+              <button class="ghost" type="button" data-event-modal-close>Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="event-modal event-modal--compact" id="calendar-paste-modal" data-event-modal aria-hidden="true">
+        <div class="event-modal__backdrop" data-event-modal-close></div>
+        <div class="event-modal__card" role="dialog" aria-modal="true" aria-labelledby="calendar-paste-title">
+          <div class="event-modal__header">
+            <h3 id="calendar-paste-title">Paste event JSON</h3>
+            <button class="event-modal__close" type="button" data-event-modal-close aria-label="Close">
+              ×
+            </button>
+          </div>
+          <form class="form" data-calendar-paste-form>
+            <label class="form-field">
+              <span>Event payload</span>
+              <textarea name="pastePayload" rows="6" placeholder='{"title":"Weekly sync","startsAt":"2024-06-01T10:00:00.000Z"}'></textarea>
+            </label>
+            <div class="form-feedback is-hidden" data-calendar-paste-feedback></div>
+            <div class="event-modal__actions">
+              <button class="primary" type="submit">Paste event</button>
               <button class="ghost" type="button" data-event-modal-close>Cancel</button>
             </div>
           </form>
@@ -1317,6 +1398,46 @@ function getSelectedPermissions(form) {
   return Array.from(form.querySelectorAll('input[name="permissions"]:checked')).map((input) => input.value);
 }
 
+function buildCalendarSelectorMarkup(calendars = [], selectedId = "") {
+  if (!calendars.length) {
+    return {
+      optionsMarkup: `<option value="">No calendars available</option>`,
+      listMarkup: `<p class="muted">No calendars available.</p>`,
+      selectedId: ""
+    };
+  }
+  const resolvedId = selectedId || calendars[0]?.id || "";
+  const optionsMarkup = [
+    `<option value="">Select a calendar</option>`,
+    ...calendars.map((calendar, index) => {
+      const label = index === 0 ? `${calendar.name} (Default)` : calendar.name;
+      return `<option value="${calendar.id}">${label}</option>`;
+    })
+  ].join("");
+  const listMarkup = calendars
+    .map((calendar, index) => {
+      const isDefault = index === 0;
+      const isActive = calendar.id === resolvedId;
+      return `
+        <button
+          class="calendar-option${isActive ? " calendar-option--active" : ""}"
+          type="button"
+          data-calendar-option
+          data-calendar-id="${calendar.id}"
+          aria-pressed="${isActive ? "true" : "false"}"
+        >
+          <div class="calendar-option__meta">
+            <strong>${calendar.name}</strong>
+            <span class="muted">ID: ${calendar.id}</span>
+          </div>
+          ${isDefault ? '<span class="calendar-option__badge">Default</span>' : ""}
+        </button>
+      `;
+    })
+    .join("");
+  return { optionsMarkup, listMarkup, selectedId: resolvedId };
+}
+
 async function fetchJson(url, { token, includeCredentials } = {}) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   const options = { headers };
@@ -1354,6 +1475,61 @@ async function postJson(url, payload, { token } = {}) {
   }
 }
 
+async function hydrateCalendarSelectors({ authState } = {}) {
+  const forms = Array.from(document.querySelectorAll("form[data-permission-create]"));
+  if (!forms.length) {
+    return { hydrated: false };
+  }
+  if (!authState?.token) {
+    forms.forEach((form) => {
+      const selector = form.querySelector("[data-calendar-selector]");
+      if (selector) {
+        selector.innerHTML = `<p class="muted">Sign in to load calendars.</p>`;
+      }
+    });
+    return { hydrated: true };
+  }
+  try {
+    const response = await fetchJson("/api/calendars", { token: authState.token });
+    const calendars = response.calendars || [];
+    const defaultCalendarId = calendars[0]?.id || "";
+    forms.forEach((form) => {
+      const select = form.querySelector("[data-calendar-select]");
+      const selector = form.querySelector("[data-calendar-selector]");
+      if (!select || !selector) {
+        return;
+      }
+      const { optionsMarkup, listMarkup, selectedId } = buildCalendarSelectorMarkup(calendars, defaultCalendarId);
+      select.innerHTML = optionsMarkup;
+      select.value = selectedId;
+      selector.innerHTML = listMarkup;
+      selector.querySelectorAll("[data-calendar-option]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const calendarId = button.dataset.calendarId;
+          if (!calendarId) {
+            return;
+          }
+          select.value = calendarId;
+          selector.querySelectorAll("[data-calendar-option]").forEach((option) => {
+            const isActive = option.dataset.calendarId === calendarId;
+            option.classList.toggle("calendar-option--active", isActive);
+            option.setAttribute("aria-pressed", isActive ? "true" : "false");
+          });
+        });
+      });
+    });
+    return { hydrated: true };
+  } catch (error) {
+    forms.forEach((form) => {
+      const selector = form.querySelector("[data-calendar-selector]");
+      if (selector) {
+        selector.innerHTML = `<p class="muted">Unable to load calendars right now.</p>`;
+      }
+    });
+    return { hydrated: false };
+  }
+}
+
 function initCalendarControls() {
   document.querySelectorAll("form[data-calendar-create]").forEach((form) => {
     form.addEventListener("submit", async (event) => {
@@ -1383,6 +1559,8 @@ function initCalendarControls() {
     });
   });
 
+  hydrateCalendarSelectors({ authState: readAuthState() });
+
   document.querySelectorAll("form[data-permission-create]").forEach((form) => {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1410,6 +1588,34 @@ function initCalendarControls() {
       }
     });
   });
+}
+
+function initCalendarViewSwitcher({ documentRef = document } = {}) {
+  const root = documentRef.querySelector("[data-calendar-view]");
+  if (!root) {
+    return { enabled: false };
+  }
+  const toggles = Array.from(root.querySelectorAll("[data-calendar-view-toggle]"));
+  const panels = Array.from(root.querySelectorAll("[data-calendar-view-panel]"));
+  if (!toggles.length || !panels.length) {
+    return { enabled: false };
+  }
+  const setActiveView = (view) => {
+    toggles.forEach((toggle) => {
+      toggle.classList.toggle("calendar-pill--active", toggle.dataset.calendarViewToggle === view);
+    });
+    panels.forEach((panel) => {
+      panel.classList.toggle("calendar-view__panel--active", panel.dataset.calendarViewPanel === view);
+    });
+    root.dataset.activeView = view;
+  };
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      setActiveView(toggle.dataset.calendarViewToggle);
+    });
+  });
+  setActiveView(root.dataset.activeView || "month");
+  return { enabled: true };
 }
 
 function initSharingControls() {
@@ -1540,11 +1746,14 @@ function initCalendarDayMenus({ documentRef = document } = {}) {
   const eventModal = documentRef.getElementById("calendar-event-modal");
   const editModal = documentRef.getElementById("calendar-event-detail-modal");
   const copyModal = documentRef.getElementById("calendar-copy-modal");
+  const pasteModal = documentRef.getElementById("calendar-paste-modal");
   const eventForm = eventModal?.querySelector("[data-calendar-event-form]");
   const editDetails = editModal?.querySelector("[data-calendar-edit-details]");
   const copyForm = copyModal?.querySelector("[data-calendar-copy-form]");
   const copyFeedback = copyModal?.querySelector("[data-calendar-copy-feedback]");
   const copySummary = copyModal?.querySelector("[data-calendar-copy-summary]");
+  const pasteForm = pasteModal?.querySelector("[data-calendar-paste-form]");
+  const pasteFeedback = pasteModal?.querySelector("[data-calendar-paste-feedback]");
   let activeMenu = null;
 
   const closeMenus = () => {
@@ -1566,6 +1775,67 @@ function initCalendarDayMenus({ documentRef = document } = {}) {
     copyFeedback.dataset.tone = tone;
     copyFeedback.classList.remove("is-hidden");
   };
+
+  const setPasteFeedback = (message, tone = "error") => {
+    if (!pasteFeedback) {
+      return;
+    }
+    pasteFeedback.textContent = message;
+    pasteFeedback.dataset.tone = tone;
+    pasteFeedback.classList.remove("is-hidden");
+  };
+
+  const submitPastePayload = async ({ rawText, dateKey, calendarId }) => {
+    const authState = readAuthState();
+    if (!authState?.token) {
+      setPasteFeedback("Sign in to paste events.");
+      return;
+    }
+    let clipboardEvent;
+    try {
+      clipboardEvent = JSON.parse(rawText);
+    } catch (error) {
+      setPasteFeedback("Paste payload must be valid JSON.");
+      if (pasteModal) {
+        openEventModal(pasteModal);
+      }
+      return;
+    }
+    const pastePayload = buildPasteEventPayload(clipboardEvent, { dateKey, calendarId });
+    if (!pastePayload?.calendarId) {
+      setPasteFeedback("Paste payload missing calendar ID.");
+      showCalendarToast(root, "Paste payload missing calendar ID.", "error");
+      if (pasteModal) {
+        openEventModal(pasteModal);
+      }
+      return;
+    }
+    try {
+      await postJson("/api/events", pastePayload, { token: authState.token });
+      setPasteFeedback("Event pasted to calendar.", "success");
+      showCalendarToast(root, "Event pasted to calendar.", "success");
+      if (pasteModal) {
+        closeEventModal(pasteModal);
+      }
+    } catch (error) {
+      setPasteFeedback("Unable to paste event.");
+      showCalendarToast(root, "Unable to paste event.", "error");
+    }
+  };
+
+  if (pasteForm) {
+    pasteForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const rawText = pasteForm.querySelector('[name="pastePayload"]')?.value?.trim() || "";
+      if (!rawText) {
+        setPasteFeedback("Paste event JSON to continue.");
+        return;
+      }
+      const dateKey = pasteModal?.dataset.dateKey || "";
+      const calendarId = pasteModal?.dataset.calendarId || "";
+      await submitPastePayload({ rawText, dateKey, calendarId });
+    });
+  }
 
   if (copyForm) {
     copyForm.addEventListener("submit", async (event) => {
@@ -1659,25 +1929,38 @@ function initCalendarDayMenus({ documentRef = document } = {}) {
         showCalendarToast(root, "Sign in to paste events.", "error");
         return;
       }
+      if (pasteModal) {
+        pasteModal.dataset.dateKey = dateKey || "";
+        pasteModal.dataset.calendarId = menuCalendarId || "";
+      }
       try {
         const clipboardText = await readClipboardText();
         if (!clipboardText) {
-          showCalendarToast(root, "Clipboard is empty.", "error");
+          if (pasteModal) {
+            if (pasteFeedback) {
+              pasteFeedback.classList.add("is-hidden");
+            }
+            openEventModal(pasteModal);
+            setPasteFeedback("Clipboard is empty. Paste event JSON below.");
+          } else {
+            showCalendarToast(root, "Clipboard is empty.", "error");
+          }
           return;
         }
-        const clipboardEvent = JSON.parse(clipboardText);
-        const pastePayload = buildPasteEventPayload(clipboardEvent, {
+        await submitPastePayload({
+          rawText: clipboardText,
           dateKey,
           calendarId: menuCalendarId
         });
-        if (!pastePayload?.calendarId) {
-          showCalendarToast(root, "Paste payload missing calendar ID.", "error");
-          return;
-        }
-        await postJson("/api/events", pastePayload, { token: authState.token });
-        showCalendarToast(root, "Event pasted to calendar.", "success");
       } catch (error) {
-        showCalendarToast(root, "Unable to paste event.", "error");
+        if (pasteModal) {
+          pasteModal.dataset.dateKey = dateKey || "";
+          pasteModal.dataset.calendarId = menuCalendarId || "";
+          openEventModal(pasteModal);
+          setPasteFeedback("Unable to read clipboard. Paste event JSON below.");
+        } else {
+          showCalendarToast(root, "Unable to paste event.", "error");
+        }
       }
       return;
     }
@@ -2183,6 +2466,7 @@ if (typeof window !== "undefined") {
         initProfileManagement();
         initCalendarControls();
         initSharingControls();
+        initCalendarViewSwitcher();
         initCalendarDayMenus();
         initEventModal();
         initEventCreation();
@@ -2224,6 +2508,7 @@ module.exports = {
   setFormFeedback,
   buildEventPayload,
   buildPasteEventPayload,
+  buildCalendarSelectorMarkup,
   addHourToTime,
   copyTextToClipboard,
   createEventId,
@@ -2242,6 +2527,7 @@ module.exports = {
   getSelectedPermissions,
   getAccountHighlights,
   initCalendarControls,
+  initCalendarViewSwitcher,
   initCalendarDayMenus,
   initEventCreation,
   initEventManagement,
@@ -2250,6 +2536,7 @@ module.exports = {
   initProfileManagement,
   loadCalendarOverview,
   postJson,
+  hydrateCalendarSelectors,
   redirectToCalendar,
   updateAccountSections
 };

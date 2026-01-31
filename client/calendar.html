@@ -100,9 +100,14 @@
             <h3>Assign permissions</h3>
             <form class="form" data-permission-create>
               <label class="form-field">
-                <span>Calendar ID</span>
-                <input type="text" name="calendarId" required />
+                <span>Calendar</span>
+                <select name="calendarId" data-calendar-select required>
+                  <option value="">Select a calendar</option>
+                </select>
               </label>
+              <div class="calendar-selector" data-calendar-selector aria-live="polite">
+                <p class="muted">Sign in to load calendars.</p>
+              </div>
               <label class="form-field">
                 <span>User ID</span>
                 <input type="text" name="userId" required />

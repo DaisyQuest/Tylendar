@@ -79,6 +79,65 @@
       <section class="section">
         <div class="grid two">
           <div class="card">
+            <h3>Assign calendar access</h3>
+            <p class="muted">Choose a calendar from the list below and grant permissions instantly.</p>
+            <form class="form" data-permission-create>
+              <label class="form-field">
+                <span>Calendar</span>
+                <select name="calendarId" data-calendar-select required>
+                  <option value="">Select a calendar</option>
+                </select>
+              </label>
+              <div class="calendar-selector" data-calendar-selector aria-live="polite">
+                <p class="muted">Sign in to load calendars.</p>
+              </div>
+              <label class="form-field">
+                <span>User ID</span>
+                <input type="text" name="userId" required />
+              </label>
+              <fieldset class="form-fieldset">
+                <legend>Permissions</legend>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="View Calendar" />
+                  <span>View Calendar</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="View Calendar - Times Only" />
+                  <span>View Calendar - Times Only</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="Add to Calendar" />
+                  <span>Add to Calendar</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="Comment on Calendar" />
+                  <span>Comment on Calendar</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="checkbox" name="permissions" value="Manage Calendar" />
+                  <span>Manage Calendar</span>
+                </label>
+              </fieldset>
+              <button class="primary" type="submit">Assign permissions</button>
+              <div class="form-feedback is-hidden" data-form-feedback></div>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Permission workflow tips</h3>
+            <p class="muted">Keep owners in control and document why access was granted.</p>
+            <ul class="list">
+              <li>Confirm the calendar owner has reviewed each request.</li>
+              <li>Limit management access to role-based owners.</li>
+              <li>Document business need in audit notes after assignment.</li>
+              <li>Schedule quarterly access reviews for shared calendars.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="grid two">
+          <div class="card">
             <h3>Governance checklist</h3>
             <p class="muted">Keep your team aligned with policy expectations.</p>
             <ul class="list">
