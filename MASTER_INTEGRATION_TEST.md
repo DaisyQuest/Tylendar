@@ -57,6 +57,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Fetch calendars with session-cookie authentication and confirm the primary calendar renders with newly created events.
    - Confirm session-cookie authentication hydrates the calendar view even when local auth storage is empty.
    - Confirm the calendar grid renders time slots, all-day row, and focus-day counts with an agenda sidebar.
+   - Confirm the calendar experience renders the month grid, agenda highlights, and week-focus schedule blocks with live events.
    - Validate the personalized calendar header shows owner, availability, search/filter tools, and quick actions.
    - Confirm focus area panels and sync/time zone context render in the calendar spotlight section.
 8. **Event List Views**

@@ -154,49 +154,260 @@ function renderCalendarView(payload) {
   const summary = payload.summary || "No calendar data available.";
   const events = Array.isArray(payload.events) ? payload.events : [];
   const featuredEvents = Array.isArray(payload.featuredEvents) ? payload.featuredEvents : [];
-  const referenceDate = payload.referenceDate ? new Date(payload.referenceDate) : new Date();
-  const monthLabel = Number.isNaN(referenceDate.getTime())
-    ? ""
-    : referenceDate.toLocaleString("en-US", { month: "short" });
-
-  if (!events.length && !featuredEvents.length) {
-    return `
-      <div class="calendar-view">
-        <h3>${label}</h3>
-        <p class="muted">${summary}</p>
-        <p class="muted">No events scheduled yet.</p>
-      </div>
-    `;
-  }
-
-  const schedule = (events.length ? events : featuredEvents).map((event) => {
-    const dateLabel = event.day || formatEventDateLabel(event.startsAt);
-    return `<li>${event.title || "Untitled"} · ${dateLabel}</li>`;
-  });
-
-  const grouped = {};
-  events.forEach((event) => {
-    const dateLabel = formatEventDateLabel(event.startsAt);
-    grouped[dateLabel] = grouped[dateLabel] || [];
-    grouped[dateLabel].push(event);
-  });
-
-  const overflowMarkup = Object.entries(grouped)
-    .map(([date, dayEvents]) => {
-      if (dayEvents.length <= 3 || date === "Unscheduled") {
-        return "";
+  const scheduledEvents = events.length ? events : featuredEvents;
+  const resolveReferenceDate = () => {
+    if (payload.referenceDate) {
+      const candidate = new Date(payload.referenceDate);
+      if (!Number.isNaN(candidate.getTime())) {
+        return candidate;
       }
-      return `<div class="calendar-overflow">${date}: +${dayEvents.length - 3} more</div>`;
+    }
+    const seeded = scheduledEvents.find((event) => event?.startsAt);
+    if (seeded?.startsAt) {
+      const candidate = new Date(seeded.startsAt);
+      if (!Number.isNaN(candidate.getTime())) {
+        return candidate;
+      }
+    }
+    return new Date();
+  };
+  const referenceDate = resolveReferenceDate();
+  const monthLabel = referenceDate.toLocaleString("en-US", { month: "long" });
+  const yearLabel = referenceDate.getFullYear();
+  const pad = (value) => String(value).padStart(2, "0");
+  const formatDateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const formatTimeLabel = (value) => {
+    if (!value) {
+      return "Unscheduled";
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "Unscheduled";
+    }
+    return parsed.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  };
+  const validEvents = [];
+  const unscheduledEvents = [];
+  scheduledEvents.forEach((event) => {
+    if (!event?.startsAt) {
+      unscheduledEvents.push(event);
+      return;
+    }
+    const parsed = new Date(event.startsAt);
+    if (Number.isNaN(parsed.getTime())) {
+      unscheduledEvents.push(event);
+      return;
+    }
+    validEvents.push({ ...event, __date: parsed });
+  });
+  const eventMap = validEvents.reduce((acc, event) => {
+    const key = formatDateKey(event.__date);
+    acc[key] = acc[key] || [];
+    acc[key].push(event);
+    return acc;
+  }, {});
+  validEvents.sort((a, b) => a.__date - b.__date);
+  const agendaItems = [
+    ...validEvents.map((event) => ({
+      title: event.title || "Untitled",
+      label: `${formatEventDateLabel(event.startsAt)} · ${formatTimeLabel(event.startsAt)}`
+    })),
+    ...unscheduledEvents.map((event) => ({
+      title: event?.title || "Untitled",
+      label: formatTimeLabel(event?.startsAt)
+    }))
+  ];
+
+  const startOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+  const startWeekday = startOfMonth.getDay();
+  const daysInMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate();
+  const daysInPrevMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 0).getDate();
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const dayOffset = index - startWeekday + 1;
+    if (dayOffset <= 0) {
+      const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, daysInPrevMonth + dayOffset);
+      return { date, inMonth: false };
+    }
+    if (dayOffset > daysInMonth) {
+      const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, dayOffset - daysInMonth);
+      return { date, inMonth: false };
+    }
+    return { date: new Date(referenceDate.getFullYear(), referenceDate.getMonth(), dayOffset), inMonth: true };
+  });
+
+  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekdayMarkup = weekdayLabels.map((day) => `<div>${day}</div>`).join("");
+  const monthGrid = cells
+    .map((cell) => {
+      const key = formatDateKey(cell.date);
+      const dayEvents = eventMap[key] || [];
+      const eventMarkup = dayEvents.slice(0, 3).map((event) => `
+        <li class="calendar-month__event">
+          <span class="calendar-month__event-title">${event.title || "Untitled"}</span>
+          <span class="calendar-month__event-time">${formatTimeLabel(event.startsAt)}</span>
+        </li>
+      `);
+      const overflow = dayEvents.length > 3
+        ? `<li class="calendar-month__more">+${dayEvents.length - 3} more</li>`
+        : "";
+      return `
+        <div class="calendar-month__cell${cell.inMonth ? "" : " calendar-month__cell--outside"}">
+          <span class="calendar-month__date">${cell.date.getDate()}</span>
+          <ul class="calendar-month__events">
+            ${eventMarkup.join("")}
+            ${overflow}
+          </ul>
+        </div>
+      `;
     })
     .join("");
 
+  const focusDays = Array.from({ length: 5 }, (_, index) => {
+    const date = new Date(referenceDate);
+    date.setDate(referenceDate.getDate() + index);
+    return {
+      key: formatDateKey(date),
+      label: date.toLocaleString("en-US", { weekday: "short" }),
+      date
+    };
+  });
+  const timeSlots = [
+    { label: "09:00", hour: 9 },
+    { label: "11:00", hour: 11 },
+    { label: "13:00", hour: 13 },
+    { label: "15:00", hour: 15 }
+  ];
+  const gridHeader = `
+    <div class="calendar-grid__corner">Week focus</div>
+    ${focusDays.map((day) => `<div class="calendar-grid__day">${day.label} ${day.date.getDate()}</div>`).join("")}
+  `;
+  const gridRows = timeSlots
+    .map((slot) => {
+      const slotsMarkup = focusDays
+        .map((day) => {
+          const dayEvents = eventMap[day.key] || [];
+          const slotEvents = dayEvents.filter((event) => {
+            const hour = event.__date?.getHours?.();
+            return hour === slot.hour;
+          });
+          if (!slotEvents.length) {
+            return `
+              <div class="calendar-slot calendar-slot--empty">
+                <div class="calendar-slot__empty">Open</div>
+              </div>
+            `;
+          }
+          return `
+            <div class="calendar-slot">
+              ${slotEvents
+                .map(
+                  (event) => `
+                  <div class="calendar-event">
+                    <div class="calendar-event__title">${event.title || "Untitled"}</div>
+                    <div class="calendar-event__meta">${formatTimeLabel(event.startsAt)}</div>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+          `;
+        })
+        .join("");
+      return `
+        <div class="calendar-grid__time">${slot.label}</div>
+        ${slotsMarkup}
+      `;
+    })
+    .join("");
+
+  const nextEvent = validEvents[0];
+  const agendaMarkup = agendaItems.length
+    ? `<ul class="list">${agendaItems
+        .slice(0, 6)
+        .map((event) => `<li><strong>${event.title}</strong> · ${event.label}</li>`)
+        .join("")}</ul>`
+    : `<p class="muted">No events scheduled yet.</p>`;
+
   return `
     <div class="calendar-view">
-      <h3>${label}</h3>
-      <p class="muted">${summary}</p>
-      <p class="muted">${monthLabel}</p>
-      <ul>${schedule.join("")}</ul>
-      ${overflowMarkup}
+      <div class="calendar-view__header">
+        <div>
+          <p class="calendar-kicker">Calendar workspace</p>
+          <h3>${label}</h3>
+          <div class="calendar-meta">
+            <span>${summary}</span>
+            <span>${monthLabel} ${yearLabel}</span>
+            <span>${scheduledEvents.length} event${scheduledEvents.length === 1 ? "" : "s"} scheduled</span>
+          </div>
+        </div>
+        <div class="calendar-view__controls">
+          <div>
+            <span class="calendar-control__label">Views</span>
+            <div class="calendar-control__pills">
+              <span class="calendar-pill calendar-pill--active">Month</span>
+              <span class="calendar-pill">Week</span>
+              <span class="calendar-pill">Day</span>
+            </div>
+          </div>
+          <div>
+            <span class="calendar-control__label">Quick actions</span>
+            <div class="calendar-control__actions">
+              <button class="calendar-action" type="button">Create event</button>
+              <button class="calendar-action" type="button">Share calendar</button>
+            </div>
+          </div>
+          <div>
+            <span class="calendar-control__label">Search</span>
+            <div class="calendar-search">
+              <input type="search" placeholder="Search events" />
+              <button class="calendar-action calendar-search__button" type="button">Go</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="calendar-spotlight">
+        <div class="calendar-panel">
+          <strong>Primary calendar</strong>
+          <p class="muted">${label}</p>
+          <div class="calendar-panel__meta">
+            <span>${scheduledEvents.length} scheduled</span>
+            <span>${unscheduledEvents.length} unscheduled</span>
+          </div>
+        </div>
+        <div class="calendar-panel">
+          <strong>Next up</strong>
+          <p class="muted">${nextEvent ? nextEvent.title || "Untitled" : "No upcoming events yet."}</p>
+          <div class="calendar-panel__meta">
+            <span>${nextEvent ? formatEventDateLabel(nextEvent.startsAt) : "Plan your next event"}</span>
+            <span>${nextEvent ? formatTimeLabel(nextEvent.startsAt) : "—"}</span>
+          </div>
+        </div>
+        <div class="calendar-panel">
+          <strong>Context</strong>
+          <p class="muted">Focus day availability and team sync context.</p>
+          <div class="calendar-panel__meta">
+            <span>Time zone: Local</span>
+            <span>Status: Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="calendar-view__body">
+        <div class="calendar-month">
+          <div class="calendar-month__weekdays">${weekdayMarkup}</div>
+          <div class="calendar-month__grid">${monthGrid}</div>
+        </div>
+        <div class="calendar-agenda">
+          <h4>Agenda highlights</h4>
+          ${agendaMarkup}
+        </div>
+      </div>
+
+      <div class="calendar-grid">
+        ${gridHeader}
+        ${gridRows}
+      </div>
     </div>
   `;
 }

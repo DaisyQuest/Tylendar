@@ -250,6 +250,7 @@ describe("client rendering", () => {
     const html = renderCalendarView({ label: "Calendar", summary: "Summary", events: [] });
 
     expect(html).toContain("No events scheduled yet");
+    expect(html).toContain("calendar-month__grid");
   });
 
   test("renderCalendarView uses defaults when calendar is missing", () => {
@@ -268,6 +269,7 @@ describe("client rendering", () => {
 
     expect(html).toContain("Calendar");
     expect(html).toContain("No calendar data available.");
+    expect(html).toContain("calendar-view__header");
   });
 
   test("renderCalendarView handles invalid reference dates", () => {
@@ -279,6 +281,7 @@ describe("client rendering", () => {
     });
 
     expect(html).toContain("Calendar");
+    expect(html).toContain("calendar-month__grid");
   });
 
   test("renderCalendarView lists events when provided", () => {
@@ -294,7 +297,20 @@ describe("client rendering", () => {
 
     expect(html).toContain("Event A");
     expect(html).toContain("Event B");
-    expect(html).toContain("Jan");
+    expect(html).toContain("January");
+  });
+
+  test("renderCalendarView renders week focus slots with events", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "2024-01-05T12:00:00.000Z",
+      events: [{ title: "Standup", startsAt: "2024-01-05T09:00:00.000Z" }]
+    });
+
+    expect(html).toContain("calendar-grid");
+    expect(html).toContain("calendar-event__title");
+    expect(html).toContain("Standup");
   });
 
   test("renderCalendarView uses untitled label when title is missing", () => {
@@ -342,6 +358,27 @@ describe("client rendering", () => {
     });
 
     expect(html).toContain("Unscheduled");
+  });
+
+  test("renderCalendarView treats invalid startsAt values as unscheduled", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      events: [{ title: "Mystery", startsAt: "not-a-date" }]
+    });
+
+    expect(html).toContain("Unscheduled");
+  });
+
+  test("renderCalendarView uses event dates when reference date is invalid", () => {
+    const html = renderCalendarView({
+      label: "Calendar",
+      summary: "Summary",
+      referenceDate: "not-a-date",
+      events: [{ title: "Launch", startsAt: "2024-02-02T10:00:00.000Z" }]
+    });
+
+    expect(html).toContain("February");
   });
 
   test("renderCalendarView falls back to featured events", () => {
@@ -2102,6 +2139,32 @@ describe("client data loading", () => {
       credentials: "same-origin",
       headers: {}
     });
+
+    global.fetch.mockRestore();
+  });
+
+  test("resolveAuthState returns stored state when session payload is incomplete", async () => {
+    const storage = {
+      data: {},
+      getItem(key) {
+        return this.data[key] || null;
+      },
+      setItem(key, value) {
+        this.data[key] = value;
+      }
+    };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ user: { id: "user-8" } })
+      })
+    );
+
+    const result = await resolveAuthState(storage);
+
+    expect(result).toBeNull();
+    expect(storage.getItem("tylendar-auth")).toBeNull();
 
     global.fetch.mockRestore();
   });
