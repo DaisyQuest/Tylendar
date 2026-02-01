@@ -33,15 +33,18 @@ const {
   buildEventPayload,
   buildPasteEventPayload,
   buildCalendarSelectorMarkup,
+  buildSessionMeta,
   addHourToTime,
   copyTextToClipboard,
   createEventId,
   createEventCopyPayload,
   decodeMenuPayload,
   encodeMenuPayload,
+  formatSessionSyncLabel,
   getTimeFromIso,
   parseEventDateTime,
   refreshEventList,
+  refreshSessionState,
   setEventListFeedback,
   showCalendarToast,
   openEventModal,
@@ -161,14 +164,14 @@ describe("client rendering", () => {
   test("renderAuthStatus returns signed-out label", () => {
     const html = renderAuthStatus(null);
 
-    expect(html).toContain("Not signed in");
+    expect(html).toContain("No session yet");
     expect(html).not.toContain("Log out");
   });
 
   test("renderAuthStatus returns signed-in label and logout", () => {
     const html = renderAuthStatus({ user: { name: "Avery" } });
 
-    expect(html).toContain("Signed in as Avery");
+    expect(html).toContain("Session steady with Avery");
     expect(html).toContain("Log out");
   });
 
@@ -176,20 +179,42 @@ describe("client rendering", () => {
     const htmlWithEmail = renderAuthStatus({ user: { email: "user@example.com" } });
     const htmlWithFallback = renderAuthStatus({ user: {} });
 
-    expect(htmlWithEmail).toContain("Signed in as user@example.com");
-    expect(htmlWithFallback).toContain("Signed in as Account");
+    expect(htmlWithEmail).toContain("Session steady with user@example.com");
+    expect(htmlWithFallback).toContain("Session steady with Account");
+  });
+
+  test("formatSessionSyncLabel falls back to syncing when no timestamp", () => {
+    expect(formatSessionSyncLabel()).toBe("Syncing now");
+    expect(formatSessionSyncLabel("not-a-date")).toBe("Syncing now");
+  });
+
+  test("formatSessionSyncLabel returns friendly relative labels", () => {
+    const now = new Date("2024-01-01T00:10:00.000Z");
+    expect(formatSessionSyncLabel("2024-01-01T00:09:45.000Z", now)).toBe("Synced just now");
+    expect(formatSessionSyncLabel("2024-01-01T00:07:30.000Z", now)).toBe("Synced a moment ago");
+    expect(formatSessionSyncLabel("2024-01-01T00:00:00.000Z", now)).toBe("Synced 10m ago");
+    expect(formatSessionSyncLabel("2023-12-31T22:10:00.000Z", now)).toBe("Synced 2h ago");
+  });
+
+  test("buildSessionMeta combines sync label and source", () => {
+    const now = new Date();
+    const meta = buildSessionMeta({ lastSync: now.toISOString(), syncSource: "secure cookie" });
+
+    expect(meta).toContain("Synced");
+    expect(meta).toContain("via secure cookie");
+    expect(buildSessionMeta({})).toContain("via device cache");
   });
 
   test("renderHighlights renders empty state without items", () => {
     const html = renderHighlights([]);
 
-    expect(html).toContain("No account details available yet");
+    expect(html).toContain("No session details yet. Sign in to see your highlights.");
   });
 
   test("renderHighlights uses defaults when highlights are missing", () => {
     const html = renderHighlights();
 
-    expect(html).toContain("No account details available yet");
+    expect(html).toContain("No session details yet. Sign in to see your highlights.");
   });
 
   test("renderHighlights renders account summary items", () => {
@@ -197,7 +222,7 @@ describe("client rendering", () => {
       { title: "Email", description: "user@example.com" }
     ]);
 
-    expect(html).toContain("Account Summary");
+    expect(html).toContain("Session snapshot");
     expect(html).toContain("user@example.com");
   });
 
@@ -3444,7 +3469,7 @@ describe("client data loading", () => {
     global.fetch = originalFetch;
   });
 
-  test("resolveAuthState returns stored auth state when token exists", async () => {
+  test("resolveAuthState refreshes stored auth state when token exists", async () => {
     const storage = {
       data: {},
       getItem(key) {
@@ -3458,7 +3483,7 @@ describe("client data loading", () => {
 
     global.fetch = jest.fn(() =>
       Promise.resolve({
-        ok: true,
+        ok: false,
         json: () => Promise.resolve({})
       })
     );
@@ -3466,7 +3491,11 @@ describe("client data loading", () => {
     const result = await resolveAuthState(storage);
 
     expect(result.token).toBe("stored-token");
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.syncSource).toBe("device cache");
+    expect(global.fetch).toHaveBeenCalledWith("/api/auth/session", {
+      credentials: "same-origin",
+      headers: {}
+    });
 
     global.fetch.mockRestore();
   });
@@ -3497,6 +3526,7 @@ describe("client data loading", () => {
 
     expect(result.token).toBe("session-token");
     expect(result.user.name).toBe("Session User");
+    expect(result.syncSource).toBe("secure cookie");
     expect(JSON.parse(storage.getItem("tylendar-auth")).token).toBe("session-token");
     expect(global.fetch).toHaveBeenCalledWith("/api/auth/session", {
       credentials: "same-origin",
@@ -3556,6 +3586,67 @@ describe("client data loading", () => {
 
     expect(result).toBeNull();
     expect(storage.getItem("tylendar-auth")).toBeNull();
+
+    global.fetch.mockRestore();
+  });
+
+  test("refreshSessionState updates session details from the server", async () => {
+    const storage = {
+      data: {},
+      getItem(key) {
+        return this.data[key] || null;
+      },
+      setItem(key, value) {
+        this.data[key] = value;
+      }
+    };
+    const authState = { token: "old-token", user: { id: "user-1" } };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          user: { id: "user-1", name: "Fresh" },
+          session: { token: "fresh-token" },
+          permissions: ["View Calendar"]
+        })
+      })
+    );
+
+    const result = await refreshSessionState(authState, storage);
+
+    expect(result.token).toBe("fresh-token");
+    expect(result.user.name).toBe("Fresh");
+    expect(result.syncSource).toBe("secure cookie");
+    expect(JSON.parse(storage.getItem("tylendar-auth")).token).toBe("fresh-token");
+
+    global.fetch.mockRestore();
+  });
+
+  test("refreshSessionState falls back to stored state on errors", async () => {
+    const storage = {
+      data: {},
+      getItem(key) {
+        return this.data[key] || null;
+      },
+      setItem(key, value) {
+        this.data[key] = value;
+      }
+    };
+    const authState = { token: "old-token", user: { id: "user-1" } };
+
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({})
+      })
+    );
+
+    const result = await refreshSessionState(authState, storage);
+
+    expect(result.token).toBe("old-token");
+    expect(result.syncSource).toBe("device cache");
+    expect(JSON.parse(storage.getItem("tylendar-auth")).token).toBe("old-token");
 
     global.fetch.mockRestore();
   });
@@ -4123,7 +4214,7 @@ describe("auth utilities", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(readAuthState(storage).token).toBe("token");
-    expect(document.querySelector("[data-auth-status]").textContent).toContain("Signed in as");
+    expect(document.querySelector("[data-auth-status]").textContent).toContain("Session steady with");
   });
 
   test("initAuthUI handles registration flow", async () => {

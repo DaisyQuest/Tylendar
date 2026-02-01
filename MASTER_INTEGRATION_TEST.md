@@ -23,6 +23,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Confirm feature flags toggle profile modules without breaking navigation.
    - Update profile details via the profile management form and confirm changes persist in the profile summary and session state.
    - Verify profile edits persist across session refresh and re-login.
+   - Confirm the session snapshot copy emphasizes friendly, simple session management cues.
+   - Confirm the session status shows steady sync metadata (last sync + source) after login.
 2. **Organization Lifecycle**
    - Create organization, assign roles, configure permissions.
    - Validate Role & Permission Management UI for role definitions and assignments.
@@ -59,6 +61,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Confirm session-cookie authentication hydrates the calendar view even when local auth storage is empty.
    - Confirm the calendar grid renders time slots, all-day row, and focus-day counts with an agenda sidebar.
    - Confirm the calendar experience renders the month grid, agenda highlights, and week-focus schedule blocks with live events.
+   - Confirm the calendar canvas uses friendly, simple copy and visual styling without corporate tone.
    - Use the day-cell action menu to create a new event, review event details, copy event settings to JSON, and paste a clipboard JSON payload into the selected day (including manual paste fallback when clipboard access fails).
    - Validate the personalized calendar header shows owner, availability, search/filter tools, and quick actions.
    - Confirm focus area panels and sync/time zone context render in the calendar spotlight section.
@@ -70,6 +73,7 @@ This document defines the **Master Integration Test (MIT)** that validates all m
    - Confirm permission assignment forms load all calendars with the default calendar preselected.
    - Confirm Manage Access UI table lists assigned permissions accurately.
    - Validate the Access Command Center shows summary metrics, default policies, and pending access requests.
+   - Confirm the permissions playground copy stays friendly and simple while keeping permission labels unchanged.
    - Confirm permission playbook content and governance checklist are visible for owners.
    - Validate permission revocation removes access across all UI entry points.
 10. **Audit History**
@@ -99,6 +103,8 @@ This document defines the **Master Integration Test (MIT)** that validates all m
     - Verify the login/register modal opens from the home navigation and captures org/role inputs.
     - Confirm the home page quick links route to dedicated focus pages (profiles, dashboards, calendar, access, MessageBoard, embed, sharing, audit, roles, resilience, developer, server status).
     - Confirm the Experience Overview page lists the same focus pages with neutral, production-ready copy.
+    - Confirm the home page messaging mentions advanced mode as a future enhancement while keeping the tone friendly and simple.
+    - Confirm the calendar spotlight card routes to the calendar canvas and permissions playground.
     - Validate each focus page renders the correct primary widgets with empty-state messaging when no data exists (profile summary, dashboards, calendar view + event list, access matrix, MessageBoard, embed widget, sharing options, audit history, role management, fault tolerance, developer portal, server status + alerts).
     - Verify the focused page layout uses the page-content container for single-column readability.
 16. **Merge & Dependency Integrity**

@@ -1,4 +1,13 @@
 const AUTH_STORAGE_KEY = "tylendar-auth";
+const SESSION_SYNC_LABELS = {
+  justNow: "Synced just now",
+  momentAgo: "Synced a moment ago",
+  syncing: "Syncing now"
+};
+const SESSION_SYNC_SOURCES = {
+  cookie: "secure cookie",
+  local: "device cache"
+};
 
 function renderEmptyState({ title, message }) {
   return `
@@ -131,13 +140,46 @@ async function readClipboardText() {
   return "";
 }
 
+function formatSessionSyncLabel(lastSync, now = new Date()) {
+  if (!lastSync) {
+    return SESSION_SYNC_LABELS.syncing;
+  }
+  const parsed = new Date(lastSync);
+  if (Number.isNaN(parsed.getTime())) {
+    return SESSION_SYNC_LABELS.syncing;
+  }
+  const diffMs = now.getTime() - parsed.getTime();
+  if (diffMs < 30000) {
+    return SESSION_SYNC_LABELS.justNow;
+  }
+  if (diffMs < 300000) {
+    return SESSION_SYNC_LABELS.momentAgo;
+  }
+  const minutes = Math.max(1, Math.floor(diffMs / 60000));
+  if (minutes < 60) {
+    return `Synced ${minutes}m ago`;
+  }
+  const hours = Math.max(1, Math.floor(minutes / 60));
+  return `Synced ${hours}h ago`;
+}
+
+function buildSessionMeta(authState) {
+  const syncLabel = formatSessionSyncLabel(authState?.lastSync);
+  const sourceLabel = authState?.syncSource
+    ? `via ${authState.syncSource}`
+    : `via ${SESSION_SYNC_SOURCES.local}`;
+  return `${syncLabel} · ${sourceLabel}`;
+}
+
 function renderAuthStatus(authState) {
   if (!authState || !authState.user) {
-    return `<span class="auth-status__text">Not signed in</span>`;
+    return `<span class="auth-status__text">No session yet</span>`;
   }
   const label = authState.user.name || authState.user.email || "Account";
+  const meta = buildSessionMeta(authState);
   return `
-    <span class="auth-status__text">Signed in as ${label}</span>
+    <span class="auth-status__text">Session steady with ${label}</span>
+    <span class="auth-status__meta">${meta}</span>
     <button class="auth-logout" type="button" data-auth-logout>Log out</button>
   `;
 }
@@ -199,13 +241,13 @@ function renderProfileManagement(user) {
 function renderHighlights(highlights = []) {
   if (!Array.isArray(highlights) || highlights.length === 0) {
     return renderEmptyState({
-      title: "Account Summary",
-      message: "No account details available yet."
+      title: "Session snapshot",
+      message: "No session details yet. Sign in to see your highlights."
     });
   }
   return `
     <div class="summary-card">
-      <h3>Account Summary</h3>
+      <h3>Session snapshot</h3>
       <ul>
         ${highlights
           .map((item) => `<li><strong>${item.title}</strong> ${item.description}</li>`)
@@ -1367,7 +1409,7 @@ function initAuthUI({ storage } = {}) {
         writeAuthState(response, storage);
         updateAuthStatus(response, storage);
         const label = response.user?.name || response.user?.email || "Account";
-        setAuthFeedback(`Signed in as ${label}`, "success");
+        setAuthFeedback(`Session steady for ${label}`, "success");
       } catch (error) {
         setAuthFeedback(error.message || "Authentication failed");
       }
@@ -2263,10 +2305,53 @@ function updateAccountSections(user) {
   }
 }
 
+async function refreshSessionState(authState, storage) {
+  if (!authState?.token) {
+    return authState;
+  }
+  const currentSync = authState?.lastSync;
+  try {
+    const session = await fetchJson("/api/auth/session", { includeCredentials: true });
+    if (session?.session?.token && session?.user) {
+      const nextState = {
+        token: session.session.token,
+        user: session.user,
+        permissions: session.permissions || [],
+        lastSync: new Date().toISOString(),
+        syncSource: SESSION_SYNC_SOURCES.cookie
+      };
+      writeAuthState(nextState, storage);
+      return nextState;
+    }
+  } catch (error) {
+    const fallbackState = {
+      ...authState,
+      lastSync: currentSync || new Date().toISOString(),
+      syncSource: authState?.syncSource || SESSION_SYNC_SOURCES.local
+    };
+    writeAuthState(fallbackState, storage);
+    return fallbackState;
+  }
+  const fallbackState = {
+    ...authState,
+    lastSync: currentSync || new Date().toISOString(),
+    syncSource: authState?.syncSource || SESSION_SYNC_SOURCES.local
+  };
+  writeAuthState(fallbackState, storage);
+  return fallbackState;
+}
+
 async function resolveAuthState(storage) {
   const storedState = readAuthState(storage);
   if (storedState?.token) {
-    return storedState;
+    return refreshSessionState(
+      {
+        ...storedState,
+        lastSync: storedState.lastSync || new Date().toISOString(),
+        syncSource: storedState.syncSource || SESSION_SYNC_SOURCES.local
+      },
+      storage
+    );
   }
   try {
     const session = await fetchJson("/api/auth/session", { includeCredentials: true });
@@ -2274,7 +2359,9 @@ async function resolveAuthState(storage) {
       const nextState = {
         token: session.session.token,
         user: session.user,
-        permissions: session.permissions || []
+        permissions: session.permissions || [],
+        lastSync: new Date().toISOString(),
+        syncSource: SESSION_SYNC_SOURCES.cookie
       };
       writeAuthState(nextState, storage);
       return nextState;
@@ -2485,6 +2572,7 @@ module.exports = {
   init,
   initAuthUI,
   readAuthState,
+  refreshSessionState,
   resolveAuthState,
   renderAccessMatrix,
   renderAuthStatus,
@@ -2515,6 +2603,7 @@ module.exports = {
   createEventCopyPayload,
   decodeMenuPayload,
   encodeMenuPayload,
+  formatSessionSyncLabel,
   getTimeFromIso,
   parseEventDateTime,
   refreshEventList,
@@ -2538,5 +2627,6 @@ module.exports = {
   postJson,
   hydrateCalendarSelectors,
   redirectToCalendar,
+  buildSessionMeta,
   updateAccountSections
 };

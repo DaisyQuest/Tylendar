@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Manage Access</title>
+    <title>Tylendar | Permissions Playground</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -27,21 +27,21 @@
           <a href="/observability">Server Status</a>
         </div>
         <div class="nav-actions">
-          <span class="auth-status" data-auth-status>Not signed in</span>
+          <span class="auth-status" data-auth-status>No session yet</span>
           <button class="ghost" data-auth-trigger="login">Log in</button>
           <button class="primary" data-auth-trigger="register">Register</button>
         </div>
       </nav>
       <section class="hero-banner">
         <div>
-          <p class="eyebrow">Manage Access</p>
-          <h1>Access management</h1>
+          <p class="eyebrow">Permissions</p>
+          <h1>Permissions playground</h1>
           <p class="subheading">
-            Review and update calendar permissions.
+            Keep sharing simple, kind, and totally clear.
           </p>
           <div class="hero-actions">
             <a class="primary" href="/roles">Review roles</a>
-            <a class="secondary" href="/audit">Check audit history</a>
+            <a class="secondary" href="/audit">Peek at audit history</a>
           </div>
         </div>
       </section>
@@ -50,15 +50,15 @@
     <main class="page-content">
       <section class="section">
         <div class="section-heading">
-          <h2>Access Command Center</h2>
-          <p>Understand who has access, what they can do, and how to keep every share aligned with policy.</p>
+          <h2>Access command nook</h2>
+          <p>See who has access, what they can do, and how to keep every share tidy.</p>
         </div>
         <div class="grid two">
           <div class="card" id="access-matrix"></div>
           <div class="card">
             <h3>Permission playbook</h3>
             <p class="muted">
-              Use these permission tiers to keep collaborations secure while still giving teammates the access they need.
+              Use these gentle tiers to share just enough while keeping calendars cozy.
             </p>
             <ul class="list">
               <li><strong>View Calendar</strong> — See full event details and attendee lists.</li>
@@ -68,9 +68,9 @@
               <li><strong>Manage Calendar</strong> — Update or delete events and adjust access.</li>
             </ul>
             <div class="badges">
-              <span class="badge">Least privilege</span>
+              <span class="badge">Kind by default</span>
               <span class="badge">Audited access</span>
-              <span class="badge">Owner approvals</span>
+              <span class="badge">Owner nudges</span>
             </div>
           </div>
         </div>
@@ -79,8 +79,8 @@
       <section class="section">
         <div class="grid two">
           <div class="card">
-            <h3>Assign calendar access</h3>
-            <p class="muted">Choose a calendar from the list below and grant permissions instantly.</p>
+            <h3>Share calendar access</h3>
+            <p class="muted">Pick a calendar, choose permissions, and share with confidence.</p>
             <form class="form" data-permission-create>
               <label class="form-field">
                 <span>Calendar</span>
@@ -123,13 +123,13 @@
             </form>
           </div>
           <div class="card">
-            <h3>Permission workflow tips</h3>
-            <p class="muted">Keep owners in control and document why access was granted.</p>
+            <h3>Permission tips</h3>
+            <p class="muted">Keep owners in the loop and document why access was granted.</p>
             <ul class="list">
               <li>Confirm the calendar owner has reviewed each request.</li>
-              <li>Limit management access to role-based owners.</li>
-              <li>Document business need in audit notes after assignment.</li>
-              <li>Schedule quarterly access reviews for shared calendars.</li>
+              <li>Limit management access to trusted owners.</li>
+              <li>Document the why in audit notes after assignment.</li>
+              <li>Schedule lightweight access check-ins each quarter.</li>
             </ul>
           </div>
         </div>
@@ -139,21 +139,21 @@
         <div class="grid two">
           <div class="card">
             <h3>Governance checklist</h3>
-            <p class="muted">Keep your team aligned with policy expectations.</p>
+            <p class="muted">Keep your team aligned with clear, friendly guidelines.</p>
             <ul class="list">
               <li>Confirm every manager has a backup owner.</li>
-              <li>Audit recurring shares for external vendors monthly.</li>
-              <li>Review time-only access before publishing public availability.</li>
-              <li>Validate comments are enabled only for internal collaborators.</li>
+              <li>Review recurring shares for external partners monthly.</li>
+              <li>Check time-only access before sharing public availability.</li>
+              <li>Enable comments only for trusted collaborators.</li>
             </ul>
           </div>
           <div class="card">
             <h3>Audit readiness</h3>
-            <p class="muted">Make sure changes to permissions are traceable and approved.</p>
+            <p class="muted">Make sure changes to permissions stay traceable and approved.</p>
             <ul class="list">
               <li>Track permission edits in the audit feed.</li>
-              <li>Require approval for new share links.</li>
-              <li>Export permission history for compliance reviews.</li>
+              <li>Request approval for new share links.</li>
+              <li>Export permission history for reviews.</li>
             </ul>
             <div class="hero-actions">
               <a class="secondary" href="/audit">Open audit history</a>
@@ -167,7 +167,7 @@
     <footer class="footer">
       <div>
         <strong>Tylendar</strong>
-        <p>Production calendar system.</p>
+        <p>Playful calendar system for thoughtful planning.</p>
       </div>
       <div class="footer-links">
         <a href="#">Status</a>
