@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Calendar System</title>
+    <title>Tylendar | Friendly Calendar</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -26,21 +26,21 @@
           <a href="/observability">Server Status</a>
         </div>
         <div class="nav-actions">
-          <span class="auth-status" data-auth-status>Not signed in</span>
+          <span class="auth-status" data-auth-status>No session yet</span>
           <button class="ghost" data-auth-trigger="login">Log in</button>
           <button class="primary" data-auth-trigger="register">Register</button>
         </div>
       </nav>
       <section class="hero-banner" id="home">
         <div>
-          <p class="eyebrow">Calendar system</p>
-          <h1>Tylendar Calendar Workspace</h1>
+          <p class="eyebrow">Friendly calendar</p>
+          <h1>Tylendar, your cozy calendar nook</h1>
           <p class="subheading">
-            Sign in to manage calendars, events, permissions, and monitoring.
+            Plan sessions, permissions, and schedules with a smile. Advanced mode can come later.
           </p>
           <div class="hero-actions">
-            <a class="primary" href="/calendar">Open calendar</a>
-            <a class="secondary" href="/profiles">View profile</a>
+            <a class="primary" href="/calendar">Open my calendar</a>
+            <a class="secondary" href="/profiles">Visit my profile</a>
           </div>
         </div>
       </section>
@@ -49,61 +49,79 @@
     <main class="home-directory">
       <section class="section">
         <div class="section-heading">
-          <h2>Quick links</h2>
-          <p>Open the area you need.</p>
+          <h2>Calendar spotlight</h2>
+          <p>Make the calendar the bright center of your day.</p>
+        </div>
+        <div class="card calendar-spotlight__card">
+          <div>
+            <div class="calendar-spotlight__title">Your schedule, front and center</div>
+            <p class="calendar-spotlight__meta">
+              Jump into the calendar canvas, set up sessions, and keep permissions tidy without the dashboard feel.
+            </p>
+          </div>
+          <div class="calendar-spotlight__actions">
+            <a class="primary" href="/calendar">Go to calendar</a>
+            <a class="ghost" href="/access">Permissions playground</a>
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="section-heading">
+          <h2>Quick hops</h2>
+          <p>Pick a tiny adventure and jump in.</p>
         </div>
         <div class="directory-grid">
-          <a class="directory-card" href="/profiles">
-            <div class="directory-card__title">Profile & Presence</div>
-            <div class="directory-card__meta">Manage account details.</div>
-          </a>
-          <a class="directory-card" href="/dashboards">
-            <div class="directory-card__title">Dashboards</div>
-            <div class="directory-card__meta">Review status and activity.</div>
-          </a>
           <a class="directory-card" href="/calendar">
-            <div class="directory-card__title">Calendar Views</div>
-            <div class="directory-card__meta">Plan and review schedules.</div>
+            <div class="directory-card__title">Calendar canvas</div>
+            <div class="directory-card__meta">Paint the week in bright blocks.</div>
           </a>
           <a class="directory-card" href="/events">
             <div class="directory-card__title">Event Studio</div>
-            <div class="directory-card__meta">Create and manage events.</div>
+            <div class="directory-card__meta">Craft new plans without the fuss.</div>
           </a>
           <a class="directory-card" href="/access">
-            <div class="directory-card__title">Manage Access</div>
-            <div class="directory-card__meta">Control access permissions.</div>
+            <div class="directory-card__title">Permissions playground</div>
+            <div class="directory-card__meta">Grant access with friendly guardrails.</div>
+          </a>
+          <a class="directory-card" href="/profiles">
+            <div class="directory-card__title">Profile nook</div>
+            <div class="directory-card__meta">Tidy your details and session info.</div>
+          </a>
+          <a class="directory-card" href="/dashboards">
+            <div class="directory-card__title">Dashboards</div>
+            <div class="directory-card__meta">See how your week is humming along.</div>
           </a>
           <a class="directory-card" href="/messageboard">
             <div class="directory-card__title">MessageBoard</div>
-            <div class="directory-card__meta">Review event discussions.</div>
+            <div class="directory-card__meta">Swap notes and tiny cheers.</div>
           </a>
           <a class="directory-card" href="/embed">
             <div class="directory-card__title">Embed Widget</div>
-            <div class="directory-card__meta">Manage public embeds.</div>
+            <div class="directory-card__meta">Share your calendar sparkle.</div>
           </a>
           <a class="directory-card" href="/sharing">
             <div class="directory-card__title">Sharing & Export</div>
-            <div class="directory-card__meta">Share or export calendars.</div>
+            <div class="directory-card__meta">Send invites or export in a snap.</div>
           </a>
           <a class="directory-card" href="/audit">
             <div class="directory-card__title">Audit History</div>
-            <div class="directory-card__meta">Review audit logs.</div>
+            <div class="directory-card__meta">See who did what, clearly.</div>
           </a>
           <a class="directory-card" href="/roles">
             <div class="directory-card__title">Roles & Permissions</div>
-            <div class="directory-card__meta">Configure roles.</div>
+            <div class="directory-card__meta">Assign roles with a light touch.</div>
           </a>
           <a class="directory-card" href="/resilience">
             <div class="directory-card__title">Fault Tolerance</div>
-            <div class="directory-card__meta">Review resilience status.</div>
+            <div class="directory-card__meta">Stay resilient when things wobble.</div>
           </a>
           <a class="directory-card" href="/developer">
             <div class="directory-card__title">Developer Portal</div>
-            <div class="directory-card__meta">Developer resources.</div>
+            <div class="directory-card__meta">Docs and endpoints, minus the jargon.</div>
           </a>
           <a class="directory-card" href="/observability">
             <div class="directory-card__title">Server Status</div>
-            <div class="directory-card__meta">Server metrics and alerts.</div>
+            <div class="directory-card__meta">Heartbeat, uptime, and calm alerts.</div>
           </a>
         </div>
       </section>

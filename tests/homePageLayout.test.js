@@ -9,7 +9,8 @@ describe("home page layout", () => {
     );
 
     expect(html).toContain('class="home-directory"');
-    expect(html).toContain("Quick links");
+    expect(html).toContain("Calendar spotlight");
+    expect(html).toContain("Quick hops");
     expect(html).toContain("directory-card");
   });
 

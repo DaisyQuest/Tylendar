@@ -1,5 +1,7 @@
 # Project Checklist - Tylendar Calendar System
 
+_Last updated: Calendar focus + session stability refresh (no new checklist items completed)._ 
+
 > Each task maps 1:1 with PROJECT_SPEC.md. Check the box when complete.
 
 ## Foundation

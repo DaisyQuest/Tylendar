@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tylendar | Calendar</title>
+    <title>Tylendar | Calendar Canvas</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -27,7 +27,7 @@
           <a href="/observability">Server Status</a>
         </div>
         <div class="nav-actions">
-          <span class="auth-status" data-auth-status>Not signed in</span>
+          <span class="auth-status" data-auth-status>No session yet</span>
           <button class="ghost" data-auth-trigger="login">Log in</button>
           <button class="primary" data-auth-trigger="register">Register</button>
         </div>
@@ -35,13 +35,13 @@
       <section class="hero-banner">
         <div>
           <p class="eyebrow">Calendar</p>
-          <h1>Calendar workspace</h1>
+          <h1>Your playful calendar canvas</h1>
           <p class="subheading">
-            Review schedules and events.
+            A beautiful, no-fuss view of your time. Advanced mode can wait.
           </p>
           <div class="hero-actions">
-            <a class="primary" href="/access">Manage access</a>
-            <a class="secondary" href="/dashboards">Return to dashboards</a>
+            <a class="primary" href="/access">Permissions playground</a>
+            <a class="secondary" href="/dashboards">Back to dashboards</a>
           </div>
         </div>
       </section>
@@ -50,35 +50,35 @@
     <main class="page-content page-content--full">
       <section class="section section--full">
         <div class="section-heading">
-          <h2>Calendar & Event Views</h2>
-          <p>Review schedules and upcoming events.</p>
+          <h2>Calendar canvas</h2>
+          <p>See every plan in bright, friendly blocks.</p>
         </div>
         <div class="calendar-fullscreen" id="calendar-view"></div>
       </section>
 
       <section class="section">
         <div class="section-heading">
-          <h2>Upcoming events</h2>
-          <p>Stay ahead of what is scheduled in your primary calendar.</p>
+          <h2>Upcoming sparkles</h2>
+          <p>Peek at what is next in your primary calendar.</p>
         </div>
         <div class="card" id="event-list"></div>
       </section>
 
       <section class="section">
         <div class="section-heading">
-          <h2>Calendar Administration</h2>
-          <p>Create personal calendars and delegate access.</p>
+          <h2>Calendar basics</h2>
+          <p>Create calendars and invite helpers with simple permissions.</p>
         </div>
         <div class="grid two">
           <div class="card">
             <h3>Create a calendar</h3>
             <form class="form" data-calendar-create>
               <label class="form-field">
-                <span>Name</span>
+                <span>Calendar name</span>
                 <input type="text" name="name" required />
               </label>
               <label class="form-field">
-                <span>Owner Type</span>
+                <span>Owner type</span>
                 <select name="ownerType">
                   <option value="user">User</option>
                   <option value="organization">Organization</option>
@@ -90,14 +90,14 @@
               </label>
               <label class="form-checkbox">
                 <input type="checkbox" name="isPublic" />
-                <span>Make calendar public</span>
+                <span>Let this calendar be public</span>
               </label>
               <button class="primary" type="submit">Create calendar</button>
               <div class="form-feedback is-hidden" data-form-feedback></div>
             </form>
           </div>
           <div class="card">
-            <h3>Assign permissions</h3>
+            <h3>Share with permissions</h3>
             <form class="form" data-permission-create>
               <label class="form-field">
                 <span>Calendar</span>
@@ -146,7 +146,7 @@
     <footer class="footer">
       <div>
         <strong>Tylendar</strong>
-        <p>Production calendar system.</p>
+        <p>Playful calendar system for thoughtful planning.</p>
       </div>
       <div class="footer-links">
         <a href="#">Status</a>

@@ -7,7 +7,7 @@ describe("server app", () => {
     const response = await request(app).get("/");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain("Calendar Workspace");
+    expect(response.text).toContain("cozy calendar nook");
   });
 
   test("serves experience overview page", async () => {
@@ -15,17 +15,17 @@ describe("server app", () => {
     const response = await request(app).get("/details");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain("System overview");
+    expect(response.text).toContain("Calendar-first overview");
   });
 
   test("serves focused experience pages", async () => {
     const app = createApp();
     const pages = [
-      ["/profiles", "Account profile"],
+      ["/profiles", "Your session nook"],
       ["/dashboards", "Dashboards"],
-      ["/calendar", "Calendar workspace"],
+      ["/calendar", "playful calendar canvas"],
       ["/events", "Full-screen event creation"],
-      ["/access", "Access management"],
+      ["/access", "Permissions playground"],
       ["/messageboard", "Event message board"],
       ["/embed", "Embed widget"],
       ["/sharing", "Sharing & export"],
